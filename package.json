@@ -17,7 +17,9 @@
     "db:restore": "bash scripts/db-restore.sh",
     "db:seed": "node database/seed-summary.mjs",
     "start:app": "bash scripts/start-dev.sh",
-    "stop:app": "bash scripts/stop-dev.sh"
+    "stop:app": "bash scripts/stop-dev.sh",
+    "start:tailscale": "bash scripts/start-tailscale-access.sh",
+    "stop:tailscale": "bash scripts/stop-tailscale-access.sh"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

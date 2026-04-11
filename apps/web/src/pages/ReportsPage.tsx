@@ -17,36 +17,28 @@ export function ReportsPage() {
     queryFn: async () => (await api.get("/reports/overview", { params: { month: selectedMonth } })).data
   });
 
-  if (isLoading) {
-    return <LoadingState message="Loading reports…" />;
-  }
-
-  if (isError || !data) {
-    return <ErrorState message="Unable to load reports for the selected month." />;
-  }
-
   const isMonthly = reportScope === "monthly";
   const trendData = useMemo(
     () =>
-      (isMonthly ? data.monthlyComparison : data.yearlyComparison).map((item: any) => ({
+      ((isMonthly ? data?.monthlyComparison : data?.yearlyComparison) ?? []).map((item: any) => ({
         ...item,
         income: Number(item.income ?? 0),
         expense: Number(item.expense ?? 0),
         net: Number(item.net ?? 0)
       })),
-    [data.monthlyComparison, data.yearlyComparison, isMonthly]
+    [data?.monthlyComparison, data?.yearlyComparison, isMonthly]
   );
   const categoryData = useMemo(
     () =>
-      (isMonthly ? data.categoryTotals : data.yearlyCategoryTotals).map((item: any) => ({
+      ((isMonthly ? data?.categoryTotals : data?.yearlyCategoryTotals) ?? []).map((item: any) => ({
         ...item,
         total: Number(item.total ?? 0)
       })),
-    [data.categoryTotals, data.yearlyCategoryTotals, isMonthly]
+    [data?.categoryTotals, data?.yearlyCategoryTotals, isMonthly]
   );
   const barData = useMemo(
     () =>
-      (isMonthly ? data.budgetVsActual : data.monthlyBreakdown).map((item: any) => ({
+      ((isMonthly ? data?.budgetVsActual : data?.monthlyBreakdown) ?? []).map((item: any) => ({
         ...item,
         allocatedAmount: Number(item.allocatedAmount ?? 0),
         spentAmount: Number(item.spentAmount ?? 0),
@@ -54,8 +46,16 @@ export function ReportsPage() {
         expense: Number(item.expense ?? 0),
         net: Number(item.net ?? 0)
       })),
-    [data.budgetVsActual, data.monthlyBreakdown, isMonthly]
+    [data?.budgetVsActual, data?.monthlyBreakdown, isMonthly]
   );
+
+  if (isLoading) {
+    return <LoadingState message="Loading reports…" />;
+  }
+
+  if (isError || !data) {
+    return <ErrorState message="Unable to load reports for the selected month." />;
+  }
 
   const summaryCards = isMonthly
     ? [

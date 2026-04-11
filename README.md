@@ -259,6 +259,24 @@ The stop script will:
 - shut down Docker services for this project
 - keep the MySQL volume intact so your data remains on the next start
 
+## Optional Tailscale Access
+
+The repo includes a tailnet-only remote access layer for phone usage without rebinding the app itself to the network.
+
+Start it with:
+
+```bash
+npm run start:tailscale
+```
+
+Stop it with:
+
+```bash
+npm run stop:tailscale
+```
+
+This keeps the main app on `127.0.0.1` and exposes only a separate proxy bound to the machine's Tailscale IP.
+
 ## Testing
 
 Run the automated checks:
