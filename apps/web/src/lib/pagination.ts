@@ -7,7 +7,8 @@ export function getVisibleRange(page: number, perPage: number, totalItems: numbe
     return "0 of 0";
   }
 
-  const start = (page - 1) * perPage + 1;
-  const end = Math.min(page * perPage, totalItems);
+  const safePage = Math.min(Math.max(page, 1), getTotalPages(totalItems, perPage));
+  const start = (safePage - 1) * perPage + 1;
+  const end = Math.min(safePage * perPage, totalItems);
   return `${start}-${end} of ${totalItems}`;
 }

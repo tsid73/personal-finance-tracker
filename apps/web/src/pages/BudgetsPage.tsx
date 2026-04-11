@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
+import { CircleDollarSign, PencilLine, PiggyBank, Save, Tag, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ErrorState, LoadingState } from "../components/PageState";
 import { api } from "../lib/api";
+import { confirmDestructiveAction, showErrorToast, showSuccessToast } from "../lib/alerts";
 import { getErrorMessage } from "../lib/errors";
 import { formatCurrency } from "../lib/format";
+import { invalidateActiveQueries } from "../lib/query";
 import { useAppShellContext } from "../shell/useAppShellContext";
 
 export function BudgetsPage() {
@@ -40,11 +43,11 @@ export function BudgetsPage() {
   const monthlyTarget = Number(monthlyBudgetData?.totalBudget ?? 0);
 
   const refreshQueries = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["budgets", selectedMonth] }),
-      queryClient.invalidateQueries({ queryKey: ["monthly-budget", selectedMonth] }),
-      queryClient.invalidateQueries({ queryKey: ["dashboard", selectedMonth] }),
-      queryClient.invalidateQueries({ queryKey: ["reports", selectedMonth] })
+    await invalidateActiveQueries(queryClient, [
+      ["budgets", selectedMonth],
+      ["monthly-budget", selectedMonth],
+      ["dashboard", selectedMonth],
+      ["reports", selectedMonth]
     ]);
   };
 
@@ -63,8 +66,13 @@ export function BudgetsPage() {
     onSuccess: async () => {
       setMonthlyBudgetError(null);
       await refreshQueries();
+      await showSuccessToast("Monthly budget saved");
     },
-    onError: (error) => setMonthlyBudgetError(getErrorMessage(error, "Unable to save the monthly budget."))
+    onError: (error) => {
+      const message = getErrorMessage(error, "Unable to save the monthly budget.");
+      setMonthlyBudgetError(message);
+      void showErrorToast(message);
+    }
   });
 
   const saveMutation = useMutation({
@@ -95,79 +103,105 @@ export function BudgetsPage() {
       setForm({ categoryId: "", allocatedAmount: "" });
       setAllocationError(null);
       await refreshQueries();
+      await showSuccessToast(editingId ? "Category budget updated" : "Category budget created");
     },
-    onError: (error) => setAllocationError(getErrorMessage(error, "Unable to save the category budget."))
+    onError: (error) => {
+      const message = getErrorMessage(error, "Unable to save the category budget.");
+      setAllocationError(message);
+      void showErrorToast(message);
+    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => api.delete(`/budgets/${id}`),
-    onSuccess: refreshQueries,
-    onError: (error) => setAllocationError(getErrorMessage(error, "Unable to delete the category budget."))
+    onSuccess: async () => {
+      await refreshQueries();
+      await showSuccessToast("Category budget deleted");
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error, "Unable to delete the category budget.");
+      setAllocationError(message);
+      void showErrorToast(message);
+    }
   });
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="card p-5 sm:p-6">
+        <div className="card p-5 sm:p-6 dark:border dark:border-slate-800">
           <div className="section-title">Monthly budget</div>
-          <p className="mt-1 text-sm text-slate-500">Set the overall budget for {selectedMonthLabel}.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Set the overall budget for {selectedMonthLabel}.</p>
           <div className="mt-6 flex flex-col gap-4 sm:flex-row">
-            <input
-              className="rounded-2xl border border-slate-200 px-4 py-3"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="Monthly budget"
-              value={monthlyBudget}
-              onChange={(event) => setMonthlyBudget(event.target.value)}
-            />
+            <label className="flex-1 text-sm text-slate-600 dark:text-slate-300">
+              <span className="mb-2 inline-flex items-center gap-2 font-medium"><PiggyBank className="h-4 w-4" aria-hidden="true" />Monthly budget</span>
+              <input
+                className="w-full rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                type="number"
+                name="monthlyBudget"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                autoComplete="off"
+                placeholder="25000.00"
+                value={monthlyBudget}
+                onChange={(event) => setMonthlyBudget(event.target.value)}
+              />
+            </label>
             <button
-              className="rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-medium text-white disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950"
               onClick={() => saveMonthlyBudgetMutation.mutate()}
               disabled={saveMonthlyBudgetMutation.isPending}
             >
+              <Save className="h-4 w-4" aria-hidden="true" />
               Save monthly budget
             </button>
           </div>
-          {monthlyBudgetError ? <div className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{monthlyBudgetError}</div> : null}
+          {monthlyBudgetError ? <div className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:bg-rose-950/40" aria-live="polite">{monthlyBudgetError}</div> : null}
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-mist px-4 py-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Monthly target</div>
-              <div className="mt-2 text-lg font-semibold text-ink">{formatCurrency(monthlyTarget)}</div>
+            <div className="rounded-lg bg-mist px-4 py-4 dark:bg-slate-800">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Monthly target</div>
+              <div className="tabular-nums mt-2 text-lg font-semibold text-ink dark:text-slate-100">{formatCurrency(monthlyTarget)}</div>
             </div>
-            <div className="rounded-2xl bg-mist px-4 py-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Allocated</div>
-              <div className="mt-2 text-lg font-semibold text-ink">{formatCurrency(allocatedTotal)}</div>
+            <div className="rounded-lg bg-mist px-4 py-4 dark:bg-slate-800">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Allocated</div>
+              <div className="tabular-nums mt-2 text-lg font-semibold text-ink dark:text-slate-100">{formatCurrency(allocatedTotal)}</div>
             </div>
-            <div className="rounded-2xl bg-mist px-4 py-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Left to allocate</div>
-              <div className={`mt-2 text-lg font-semibold ${monthlyTarget - allocatedTotal < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+            <div className="rounded-lg bg-mist px-4 py-4 dark:bg-slate-800">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Left to allocate</div>
+              <div className={`tabular-nums mt-2 text-lg font-semibold ${monthlyTarget - allocatedTotal < 0 ? "text-rose-600" : "text-emerald-600"}`}>
                 {formatCurrency(monthlyTarget - allocatedTotal)}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="card p-5 sm:p-6">
+        <div className="card p-5 sm:p-6 dark:border dark:border-slate-800">
           <div className="section-title">Category budgets</div>
-          <p className="mt-1 text-sm text-slate-500">Allocate spending by category for {selectedMonthLabel}.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Allocate spending by category for {selectedMonthLabel}.</p>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <select className="rounded-2xl border border-slate-200 px-4 py-3" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}>
-              <option value="">Select category</option>
-              {expenseCategories.map((category: any) => (
-                <option key={category.id} value={category.id}>{category.name}</option>
-              ))}
-            </select>
-            <input className="rounded-2xl border border-slate-200 px-4 py-3" type="number" min="0" step="0.01" placeholder="Allocated amount" value={form.allocatedAmount} onChange={(event) => setForm({ ...form, allocatedAmount: event.target.value })} />
+            <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <span className="inline-flex items-center gap-2 font-medium"><Tag className="h-4 w-4" aria-hidden="true" />Category</span>
+              <select className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" name="budgetCategoryId" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}>
+                <option value="">Select category</option>
+                {expenseCategories.map((category: any) => (
+                  <option key={category.id} value={category.id}>{category.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+              <span className="inline-flex items-center gap-2 font-medium"><CircleDollarSign className="h-4 w-4" aria-hidden="true" />Allocated amount</span>
+              <input className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" type="number" name="allocatedAmount" inputMode="decimal" min="0" step="0.01" autoComplete="off" placeholder="5000.00" value={form.allocatedAmount} onChange={(event) => setForm({ ...form, allocatedAmount: event.target.value })} />
+            </label>
           </div>
-          {allocationError ? <div className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{allocationError}</div> : null}
+          {allocationError ? <div className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:bg-rose-950/40" aria-live="polite">{allocationError}</div> : null}
           <div className="mt-4 flex flex-wrap gap-3">
-            <button className="rounded-2xl bg-accent px-4 py-3 text-sm font-medium text-white disabled:opacity-60" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+            <button className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-3 text-sm font-medium text-white disabled:opacity-60" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+              {editingId ? <PencilLine className="h-4 w-4" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
               {editingId ? "Update category budget" : "Create category budget"}
             </button>
             {editingId ? (
               <button
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium"
+                className="rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium dark:border-slate-700 dark:text-slate-200"
                 onClick={() => {
                   setEditingId(null);
                   setForm({ categoryId: "", allocatedAmount: "" });
@@ -182,49 +216,57 @@ export function BudgetsPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading budgets..." />
+        <LoadingState message="Loading budgets…" />
       ) : isError ? (
         <ErrorState message="Unable to load budgets for the selected month." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {data.length === 0 ? (
-            <div className="card p-6 text-sm text-slate-500">No category budgets are set for {selectedMonthLabel} yet.</div>
+            <div className="card p-6 text-sm text-slate-500 dark:border dark:border-slate-800 dark:text-slate-400">No category budgets are set for {selectedMonthLabel} yet.</div>
           ) : (
             data.map((item: any) => {
               const spent = Number(item.spentAmount);
               const allocated = Number(item.allocatedAmount);
               const remaining = allocated - spent;
               const percent = allocated > 0 ? Math.min((spent / allocated) * 100, 100) : 0;
+              const requestDelete = async () => {
+                const confirmed = await confirmDestructiveAction("Delete category budget?", `Remove the budget for "${item.categoryName}"?`, "Delete");
+                if (confirmed) {
+                  deleteMutation.mutate(item.id);
+                }
+              };
               return (
-                <div key={item.id} className="card p-5">
+                <div key={item.id} className="card p-5 dark:border dark:border-slate-800">
                   <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="text-sm uppercase tracking-[0.2em] text-slate-400">{selectedMonthLabel}</div>
-                      <div className="mt-2 text-xl font-semibold text-ink">{item.categoryName}</div>
+                    <div className="min-w-0">
+                      <div className="text-sm uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{selectedMonthLabel}</div>
+                      <div className="mt-2 truncate text-xl font-semibold text-ink dark:text-slate-100">{item.categoryName}</div>
                     </div>
                     <div className="inline-flex gap-2">
                       <button
-                        className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium"
+                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium dark:border-slate-700 dark:text-slate-200"
                         onClick={() => {
                           setEditingId(item.id);
                           setForm({ categoryId: String(item.categoryId), allocatedAmount: String(item.allocatedAmount) });
                           setAllocationError(null);
                         }}
                       >
+                        <PencilLine className="h-4 w-4" aria-hidden="true" />
                         Edit
                       </button>
-                      <button className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600" onClick={() => deleteMutation.mutate(item.id)}>
+                      <button className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600 dark:border-rose-900 dark:text-rose-300" onClick={() => void requestDelete()}>
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
                         Delete
                       </button>
                     </div>
                   </div>
-                  <div className="mt-5 h-3 rounded-full bg-slate-100">
+                  <div className="mt-5 h-3 rounded-full bg-slate-100 dark:bg-slate-800">
                     <div className="h-3 rounded-full" style={{ width: `${percent}%`, backgroundColor: item.color }} />
                   </div>
-                  <div className="mt-5 space-y-2 text-sm text-slate-500">
-                    <div className="flex items-center justify-between"><span>Allocated</span><span className="font-medium text-ink">{formatCurrency(allocated)}</span></div>
-                    <div className="flex items-center justify-between"><span>Spent</span><span className="font-medium text-ink">{formatCurrency(spent)}</span></div>
-                    <div className="flex items-center justify-between"><span>Remaining</span><span className={`font-medium ${remaining < 0 ? "text-rose-600" : "text-emerald-600"}`}>{formatCurrency(remaining)}</span></div>
+                  <div className="mt-5 space-y-2 text-sm text-slate-500 dark:text-slate-400">
+                    <div className="flex items-center justify-between"><span>Allocated</span><span className="tabular-nums font-medium text-ink dark:text-slate-100">{formatCurrency(allocated)}</span></div>
+                    <div className="flex items-center justify-between"><span>Spent</span><span className="tabular-nums font-medium text-ink dark:text-slate-100">{formatCurrency(spent)}</span></div>
+                    <div className="flex items-center justify-between"><span>Remaining</span><span className={`tabular-nums font-medium ${remaining < 0 ? "text-rose-600" : "text-emerald-600"}`}>{formatCurrency(remaining)}</span></div>
                   </div>
                 </div>
               );

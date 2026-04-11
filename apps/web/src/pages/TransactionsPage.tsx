@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, CircleDollarSign, ClipboardPen, CreditCard, Edit3, FileText, RotateCcw, Save, Tag, Trash2, UserRound } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { ErrorState, LoadingState } from "../components/PageState";
 import { api } from "../lib/api";
+import { confirmDestructiveAction, showErrorToast, showSuccessToast } from "../lib/alerts";
 import { getErrorMessage } from "../lib/errors";
 import { formatCurrency } from "../lib/format";
 import { getTotalPages, getVisibleRange } from "../lib/pagination";
+import { invalidateActiveQueries } from "../lib/query";
 import { useAppShellContext } from "../shell/useAppShellContext";
 
 type TransactionForm = {
@@ -101,11 +104,11 @@ export function TransactionsPage() {
   };
 
   const refreshQueries = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ["transactions", selectedMonth] }),
-      queryClient.invalidateQueries({ queryKey: ["dashboard", selectedMonth] }),
-      queryClient.invalidateQueries({ queryKey: ["budgets", selectedMonth] }),
-      queryClient.invalidateQueries({ queryKey: ["reports", selectedMonth] })
+    await invalidateActiveQueries(queryClient, [
+      ["transactions", selectedMonth],
+      ["dashboard", selectedMonth],
+      ["budgets", selectedMonth],
+      ["reports", selectedMonth]
     ]);
   };
 
@@ -135,9 +138,12 @@ export function TransactionsPage() {
     onSuccess: async () => {
       resetForm();
       await refreshQueries();
+      await showSuccessToast(editingId ? "Transaction updated" : "Transaction added");
     },
     onError: (error) => {
-      setFormError(getErrorMessage(error, "Unable to save the transaction."));
+      const message = getErrorMessage(error, "Unable to save the transaction.");
+      setFormError(message);
+      void showErrorToast(message);
     }
   });
 
@@ -158,9 +164,12 @@ export function TransactionsPage() {
         categoryId: Number(item.categoryId)
       });
       await refreshQueries();
+      await showSuccessToast("Transaction deleted");
     },
     onError: (error) => {
-      setFormError(getErrorMessage(error, "Unable to delete the transaction."));
+      const message = getErrorMessage(error, "Unable to delete the transaction.");
+      setFormError(message);
+      void showErrorToast(message);
     }
   });
 
@@ -169,9 +178,12 @@ export function TransactionsPage() {
     onSuccess: async () => {
       setRecentlyDeleted(null);
       await refreshQueries();
+      await showSuccessToast("Transaction restored");
     },
     onError: (error) => {
-      setFormError(getErrorMessage(error, "Unable to restore the deleted transaction."));
+      const message = getErrorMessage(error, "Unable to restore the deleted transaction.");
+      setFormError(message);
+      void showErrorToast(message);
     }
   });
 
@@ -208,6 +220,19 @@ export function TransactionsPage() {
   const pagination = data?.pagination ?? { page: currentPage, perPage, totalItems: 0, totalPages: 1 };
   const totalPages = getTotalPages(pagination.totalItems, pagination.perPage);
 
+  useEffect(() => {
+    if (!data) {
+      return;
+    }
+
+    if (currentPage > data.pagination.totalPages) {
+      const nextParams = new URLSearchParams(searchParams);
+      nextParams.set("page", String(data.pagination.totalPages));
+      nextParams.set("month", selectedMonth);
+      setSearchParams(nextParams, { replace: true });
+    }
+  }, [currentPage, data, searchParams, selectedMonth, setSearchParams]);
+
   const setPage = (page: number) => {
     const nextParams = new URLSearchParams(searchParams);
     nextParams.set("page", String(page));
@@ -215,8 +240,9 @@ export function TransactionsPage() {
     setSearchParams(nextParams, { replace: true });
   };
 
-  const requestDelete = (item: any) => {
-    if (!window.confirm(`Delete "${item.title}"?`)) {
+  const requestDelete = async (item: any) => {
+    const confirmed = await confirmDestructiveAction("Delete transaction?", `Delete "${item.title}" from ${selectedMonthLabel}?`, "Delete");
+    if (!confirmed) {
       return;
     }
 
@@ -225,97 +251,124 @@ export function TransactionsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="card p-5 sm:p-6">
+      <div className="card p-5 sm:p-6 dark:border dark:border-slate-800">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <div className="section-title">Transactions</div>
-            <p className="mt-1 text-sm text-slate-500">Add, edit, and delete entries for {selectedMonthLabel}.</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Add, edit, and delete entries for {selectedMonthLabel}.</p>
           </div>
           {editingId ? (
-            <button className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-medium" onClick={resetForm}>
+            <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium dark:border-slate-700 dark:text-slate-200" onClick={resetForm}>
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               Cancel edit
             </button>
           ) : null}
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <input ref={titleInputRef} className="rounded-2xl border border-slate-200 px-4 py-3" placeholder="Title" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
-          <select className="rounded-2xl border border-slate-200 px-4 py-3" value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as "income" | "expense", categoryId: "" })}>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
-          <input className="rounded-2xl border border-slate-200 px-4 py-3" placeholder="Amount" type="number" min="0" step="0.01" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
-          <input className="rounded-2xl border border-slate-200 px-4 py-3" type="date" value={form.transactionDate} onChange={(event) => setForm({ ...form, transactionDate: event.target.value })} />
-          <select className="rounded-2xl border border-slate-200 px-4 py-3" value={form.accountId} onChange={(event) => setForm({ ...form, accountId: event.target.value })}>
-            <option value="">Select account</option>
-            {accounts.map((account: any) => (
-              <option key={account.id} value={account.id}>{account.label}</option>
-            ))}
-          </select>
-          <select className="rounded-2xl border border-slate-200 px-4 py-3" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}>
-            <option value="">Select category</option>
-            {filteredCategories.map((category: any) => (
-              <option key={category.id} value={category.id}>{category.name}</option>
-            ))}
-          </select>
-          <input className="rounded-2xl border border-slate-200 px-4 py-3" placeholder="Merchant" value={form.merchant} onChange={(event) => setForm({ ...form, merchant: event.target.value })} />
-          <input className="rounded-2xl border border-slate-200 px-4 py-3" placeholder="Notes" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><ClipboardPen className="h-4 w-4" aria-hidden="true" />Title</span>
+            <input ref={titleInputRef} className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Salary payment…" name="title" autoComplete="off" value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><Tag className="h-4 w-4" aria-hidden="true" />Type</span>
+            <select className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" name="kind" value={form.kind} onChange={(event) => setForm({ ...form, kind: event.target.value as "income" | "expense", categoryId: "" })}>
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><CircleDollarSign className="h-4 w-4" aria-hidden="true" />Amount</span>
+            <input className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="1200.00" name="amount" type="number" inputMode="decimal" autoComplete="off" min="0" step="0.01" value={form.amount} onChange={(event) => setForm({ ...form, amount: event.target.value })} />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><CalendarDays className="h-4 w-4" aria-hidden="true" />Date</span>
+            <input className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" name="transactionDate" type="date" value={form.transactionDate} onChange={(event) => setForm({ ...form, transactionDate: event.target.value })} />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><CreditCard className="h-4 w-4" aria-hidden="true" />Account</span>
+            <select className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" name="accountId" value={form.accountId} onChange={(event) => setForm({ ...form, accountId: event.target.value })}>
+              <option value="">Select account</option>
+              {accounts.map((account: any) => (
+                <option key={account.id} value={account.id}>{account.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><Tag className="h-4 w-4" aria-hidden="true" />Category</span>
+            <select className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" name="categoryId" value={form.categoryId} onChange={(event) => setForm({ ...form, categoryId: event.target.value })}>
+              <option value="">Select category</option>
+              {filteredCategories.map((category: any) => (
+                <option key={category.id} value={category.id}>{category.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><UserRound className="h-4 w-4" aria-hidden="true" />Merchant</span>
+            <input className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Corner market…" name="merchant" autoComplete="off" value={form.merchant} onChange={(event) => setForm({ ...form, merchant: event.target.value })} />
+          </label>
+          <label className="flex flex-col gap-2 text-sm text-slate-600 dark:text-slate-300">
+            <span className="inline-flex items-center gap-2 font-medium"><FileText className="h-4 w-4" aria-hidden="true" />Notes</span>
+            <input className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Optional details…" name="notes" autoComplete="off" value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} />
+          </label>
         </div>
 
-        {formError ? <div className="mt-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-600">{formError}</div> : null}
+        {formError ? <div className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:bg-rose-950/40" aria-live="polite">{formError}</div> : null}
         {recentlyDeleted ? (
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-700 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mt-4 flex flex-col gap-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:bg-amber-950/30 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between" aria-live="polite">
             <span>Transaction deleted.</span>
             <button
-              className="rounded-xl border border-amber-200 px-3 py-2 text-xs font-medium"
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-200 px-3 py-2 text-xs font-medium dark:border-amber-800"
               onClick={() => undoDeleteMutation.mutate(recentlyDeleted)}
               disabled={undoDeleteMutation.isPending}
             >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
               Undo delete
             </button>
           </div>
         ) : null}
 
-        <button className="mt-4 rounded-2xl bg-ink px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+        <button className="mt-4 inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-100 dark:text-slate-950" onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending}>
+          {editingId ? <Save className="h-4 w-4" aria-hidden="true" /> : <ClipboardPen className="h-4 w-4" aria-hidden="true" />}
           {editingId ? "Update transaction" : "Add transaction"}
         </button>
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading transactions..." />
+        <LoadingState message="Loading transactions…" />
       ) : isError ? (
         <ErrorState message="Unable to load transactions for the selected month." />
       ) : (
         <div>
           <div className="space-y-3 lg:hidden">
             {transactions.length === 0 ? (
-              <div className="card p-6 text-sm text-slate-500">No transactions found for this month.</div>
+              <div className="card p-6 text-sm text-slate-500 dark:border dark:border-slate-800 dark:text-slate-400">No transactions found for this month.</div>
             ) : (
               transactions.map((item: any) => (
-                <div key={item.id} className="card p-4">
+                <div key={item.id} className="card p-4 dark:border dark:border-slate-800">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="font-medium text-ink">{item.title}</div>
-                      <div className="mt-1 text-sm text-slate-500">{item.categoryName} • {item.accountLabel}</div>
-                      <div className="mt-1 text-xs text-slate-400">{item.transactionDate} • {item.merchant ?? "No merchant"}</div>
+                      <div className="truncate font-medium text-ink dark:text-slate-100">{item.title}</div>
+                      <div className="truncate mt-1 text-sm text-slate-500 dark:text-slate-400">{item.categoryName} • {item.accountLabel}</div>
+                      <div className="truncate mt-1 text-xs text-slate-400 dark:text-slate-500">{item.transactionDate} • {item.merchant ?? "No merchant"}</div>
                     </div>
-                    <div className={`text-right font-semibold ${item.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>
+                    <div className={`tabular-nums text-right font-semibold ${item.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>
                       {item.kind === "income" ? "+" : "-"}{formatCurrency(Number(item.amount))}
                     </div>
                   </div>
                   <div className="mt-4 flex gap-2">
-                    <button className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium" onClick={() => startEdit(item)}>Edit</button>
-                    <button className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600" onClick={() => requestDelete(item)}>Delete</button>
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium dark:border-slate-700 dark:text-slate-200" onClick={() => startEdit(item)}><Edit3 className="h-4 w-4" aria-hidden="true" />Edit</button>
+                    <button className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600 dark:border-rose-900 dark:text-rose-300" onClick={() => void requestDelete(item)}><Trash2 className="h-4 w-4" aria-hidden="true" />Delete</button>
                   </div>
                 </div>
               ))
             )}
           </div>
 
-          <div className="card hidden overflow-hidden lg:block">
+          <div className="card hidden overflow-hidden dark:border dark:border-slate-800 lg:block">
             <div className="overflow-x-auto">
               <table className="min-w-full border-collapse">
-                <thead className="bg-mist text-left text-xs uppercase tracking-[0.2em] text-slate-400">
+                <thead className="bg-mist text-left text-xs uppercase tracking-[0.2em] text-slate-400 dark:bg-slate-800 dark:text-slate-500">
                   <tr>
                     <th className="px-6 py-4">Title</th>
                     <th className="px-6 py-4">Category</th>
@@ -328,14 +381,14 @@ export function TransactionsPage() {
                 </thead>
                 <tbody>
                   {transactions.map((item: any) => (
-                    <tr key={item.id} className="border-t border-slate-100 text-sm text-slate-600">
-                      <td className="px-6 py-4"><div className="font-medium text-ink">{item.title}</div><div className="text-xs text-slate-400">{item.notes}</div></td>
-                      <td className="px-6 py-4"><span className="rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${item.categoryColor}20`, color: item.categoryColor }}>{item.categoryName}</span></td>
-                      <td className="px-6 py-4">{item.accountLabel}</td>
-                      <td className="px-6 py-4">{item.transactionDate}</td>
-                      <td className="px-6 py-4">{item.merchant ?? "-"}</td>
-                      <td className={`px-6 py-4 text-right font-semibold ${item.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>{item.kind === "income" ? "+" : "-"}{formatCurrency(Number(item.amount))}</td>
-                      <td className="px-6 py-4 text-right"><div className="inline-flex gap-2"><button className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium" onClick={() => startEdit(item)}>Edit</button><button className="rounded-xl border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600" onClick={() => requestDelete(item)}>Delete</button></div></td>
+                    <tr key={item.id} className="border-t border-slate-100 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+                      <td className="px-6 py-4"><div className="max-w-[220px] truncate font-medium text-ink dark:text-slate-100">{item.title}</div><div className="max-w-[220px] break-words text-xs text-slate-400 dark:text-slate-500">{item.notes}</div></td>
+                      <td className="px-6 py-4"><span className="inline-flex max-w-[180px] truncate rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: `${item.categoryColor}20`, color: item.categoryColor }}>{item.categoryName}</span></td>
+                      <td className="px-6 py-4"><span className="max-w-[120px] truncate inline-block align-bottom">{item.accountLabel}</span></td>
+                      <td className="px-6 py-4 tabular-nums">{item.transactionDate}</td>
+                      <td className="px-6 py-4"><span className="max-w-[180px] truncate inline-block align-bottom">{item.merchant ?? "-"}</span></td>
+                      <td className={`tabular-nums px-6 py-4 text-right font-semibold ${item.kind === "income" ? "text-emerald-600" : "text-rose-600"}`}>{item.kind === "income" ? "+" : "-"}{formatCurrency(Number(item.amount))}</td>
+                      <td className="px-6 py-4 text-right"><div className="inline-flex gap-2"><button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium dark:border-slate-700 dark:text-slate-200" onClick={() => startEdit(item)}><Edit3 className="h-4 w-4" aria-hidden="true" />Edit</button><button className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600 dark:border-rose-900 dark:text-rose-300" onClick={() => void requestDelete(item)}><Trash2 className="h-4 w-4" aria-hidden="true" />Delete</button></div></td>
                     </tr>
                   ))}
                 </tbody>
@@ -343,21 +396,21 @@ export function TransactionsPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
-            <div>{getVisibleRange(pagination.page, pagination.perPage, pagination.totalItems)}</div>
+          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-600 dark:border-slate-700 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+            <div className="tabular-nums">{getVisibleRange(pagination.page, pagination.perPage, pagination.totalItems)}</div>
             <div className="flex gap-2">
               <button
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-50"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
                 onClick={() => setPage(Math.max(1, pagination.page - 1))}
                 disabled={pagination.page <= 1}
               >
                 Previous page
               </button>
-              <div className="flex items-center px-2 text-xs text-slate-500">
+              <div className="tabular-nums flex items-center px-2 text-xs text-slate-500 dark:text-slate-400">
                 Page {pagination.page} of {totalPages}
               </div>
               <button
-                className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-50"
+                className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium disabled:opacity-50 dark:border-slate-700 dark:text-slate-200"
                 onClick={() => setPage(Math.min(totalPages, pagination.page + 1))}
                 disabled={pagination.page >= totalPages}
               >

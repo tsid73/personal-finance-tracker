@@ -8,11 +8,24 @@
     radial-gradient(circle at top left, rgba(233, 196, 106, 0.25), transparent 28%),
     linear-gradient(180deg, #f8fbff 0%, #f4f7fb 100%);
   font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+  color-scheme: light;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+html.dark {
+  background:
+    radial-gradient(circle at top left, rgba(15, 118, 110, 0.18), transparent 28%),
+    linear-gradient(180deg, #020617 0%, #0f172a 100%);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background: transparent;
+  color: #102a43;
 }
 
 #root {
@@ -20,9 +33,56 @@ body {
 }
 
 .card {
-  @apply rounded-3xl bg-white shadow-card;
+  @apply rounded-lg bg-white shadow-card dark:bg-slate-900 dark:shadow-none;
 }
 
 .section-title {
-  @apply text-lg font-semibold text-ink;
+  @apply text-lg font-semibold text-ink dark:text-slate-100;
+}
+
+body,
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+}
+
+html.dark body {
+  color: #e2e8f0;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+html.dark .swal2-popup {
+  border: 1px solid #1e293b;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

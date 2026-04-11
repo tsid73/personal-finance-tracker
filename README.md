@@ -8,6 +8,7 @@ Personal Finance Tracker is a local budget and finance tracker for managing mont
 - Changing the month updates dashboard, transactions, budgets, and reports together.
 - The selected month is preserved while navigating between pages.
 - A floating quick-add transaction button is available on every page.
+- A built-in theme toggle switches between light and dark modes and persists locally.
 - Data is stored in MySQL and persists across app stop/start cycles.
 - Stopping the app shuts down the frontend, API, and Docker services without deleting the database volume.
 
@@ -47,27 +48,26 @@ Personal Finance Tracker is a local budget and finance tracker for managing mont
 ```text
 personal-finance-tracker/
 +-- apps/
-¦   +-- api/
-¦   ¦   +-- src/config.ts
-¦   ¦   +-- src/db.ts
-¦   ¦   +-- src/server.ts
-¦   +-- web/
-¦       +-- src/main.tsx
-¦       +-- src/shell/AppShell.tsx
-¦       +-- src/shell/month.ts
-¦       +-- src/shell/useAppShellContext.ts
-¦       +-- src/pages/
-¦       +-- src/components/
-¦       +-- src/lib/
+|   +-- api/
+|   |   +-- src/config.ts
+|   |   +-- src/db.ts
+|   |   +-- src/server.ts
+|   +-- web/
+|       +-- src/main.tsx
+|       +-- src/shell/AppShell.tsx
+|       +-- src/shell/month.ts
+|       +-- src/shell/useAppShellContext.ts
+|       +-- src/pages/
+|       +-- src/components/
+|       +-- src/lib/
 +-- packages/
-¦   +-- shared/src/index.ts
+|   +-- shared/src/index.ts
 +-- database/
-¦   +-- schema.sql
-¦   +-- seed-summary.mjs
+|   +-- schema.sql
+|   +-- seed-summary.mjs
 +-- scripts/
-¦   +-- start-dev.sh
-¦   +-- stop-dev.sh
-+-- Plan.md
+|   +-- start-dev.sh
+|   +-- stop-dev.sh
 +-- README.md
 +-- docker-compose.yml
 +-- package.json
@@ -83,7 +83,7 @@ This project uses a monorepo-style workspace.
 - `packages/shared` contains shared domain types.
 - `database/migrations` contains the schema and demo seed migrations. `database/schema.sql` remains as a schema reference snapshot.
 - `docker-compose.yml` starts the local MySQL instance.
-- `Plan.md` is the machine-readable AI handoff and planning file.
+- `.private/Plan.md` is the private machine-readable rebuild and planning file kept out of git.
 
 ## How It Works
 
@@ -121,6 +121,7 @@ This project uses a monorepo-style workspace.
 - Undo delete for the most recent transaction removal
 - Delete confirmation before destructive actions
 - Paginated transaction list
+- SweetAlert delete confirmation and undo restore flow
 - Floating quick-add button visible on every page
 - Generic payment type selection such as `Cash`, `Bank`, `Credit Card`
 - Validation for title, amount, account, category, and month-aligned date
@@ -138,7 +139,7 @@ This project uses a monorepo-style workspace.
 
 - Seeded default categories
 - Add, edit, delete custom categories
-- Type, color, and icon label fields
+- Type, color, and icon label fields with icon display in the list
 - Input validation and user-facing errors
 
 ### Reports
@@ -278,7 +279,7 @@ That persistence works because the Docker stop flow keeps the named MySQL volume
 
 - `GET /api/health`
 - `GET /api/dashboard?month=YYYY-MM`
-- `GET /api/transactions?month=YYYY-MM`
+- `GET /api/transactions?month=YYYY-MM&page=1&perPage=10`
 - `POST /api/transactions`
 - `PUT /api/transactions/:id`
 - `DELETE /api/transactions/:id`
@@ -300,4 +301,4 @@ That persistence works because the Docker stop flow keeps the named MySQL volume
 - Barcode scanning is still deferred.
 - Authentication is not implemented yet.
 - Good next additions are recurring transactions, savings goals, CSV import/export, alerts, attachments, and account management UI.
-- `Plan.md` should be updated before and after future feature work.
+- `.private/Plan.md` should be updated before and after future feature work.

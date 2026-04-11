@@ -1,10 +1,12 @@
 import React, { Suspense, lazy } from "react";
+import type { ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 import { AppShell } from "./shell/AppShell";
 import { LoadingState } from "./components/PageState";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
+import { ThemeProvider } from "./lib/theme";
 import "./styles.css";
 
 const queryClient = new QueryClient();
@@ -14,8 +16,8 @@ const BudgetsPage = lazy(() => import("./pages/BudgetsPage").then((module) => ({
 const CategoriesPage = lazy(() => import("./pages/CategoriesPage").then((module) => ({ default: module.CategoriesPage })));
 const ReportsPage = lazy(() => import("./pages/ReportsPage").then((module) => ({ default: module.ReportsPage })));
 
-function withSuspense(element: React.ReactNode) {
-  return <Suspense fallback={<LoadingState message="Loading page..." />}>{element}</Suspense>;
+function withSuspense(element: ReactNode) {
+  return <Suspense fallback={<LoadingState message="Loading page…" />}>{element}</Suspense>;
 }
 
 const router = createBrowserRouter([
@@ -36,8 +38,10 @@ const router = createBrowserRouter([
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );
