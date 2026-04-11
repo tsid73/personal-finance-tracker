@@ -1,0 +1,25 @@
+{
+  "name": "personal-finance-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run db:migrate && concurrently \"npm run dev --workspace @finance/api\" \"npm run dev --workspace @finance/web\"",
+    "build": "npm run build --workspace @finance/shared && npm run build --workspace @finance/api && npm run build --workspace @finance/web",
+    "lint": "npm run lint --workspace @finance/api && npm run lint --workspace @finance/web",
+    "test": "find apps -name '*.test.ts' -print0 | xargs -0 node --import tsx --test",
+    "clean:generated": "bash scripts/clean-generated.sh",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:backup": "bash scripts/db-backup.sh",
+    "db:restore": "bash scripts/db-restore.sh",
+    "db:seed": "node database/seed-summary.mjs",
+    "start:app": "bash scripts/start-dev.sh",
+    "stop:app": "bash scripts/stop-dev.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

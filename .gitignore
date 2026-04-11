@@ -1,0 +1,16 @@
+node_modules
+apps/web/.vite
+apps/web/node_modules
+apps/web/src/**/*.js
+apps/web/src/**/*.test.js
+dist
+.env
+.DS_Store
+coverage
+*.log
+logs/
+*.pid
+backups/
+*.sql.gz
+Plan.md
+.private/
