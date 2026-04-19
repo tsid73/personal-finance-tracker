@@ -1,16 +1,16 @@
 # Personal Finance Tracker
 
-Personal Finance Tracker is a local budget and finance tracker for managing monthly spending, category budgets, reports, and transaction history.
+Personal Finance Tracker is a local-first finance app for one user. It manages transactions, recurring schedules, budgets, categories, reports, and month-aware dashboard insights on top of a MySQL database that persists locally between runs.
 
 ## Current Product Behavior
 
-- The app is driven by a shared selected-month control at the top of the layout.
-- Changing the month updates dashboard, transactions, budgets, and reports together.
+- A shared selected-month control in the shell drives dashboard, transactions, budgets, reports, and monthly drill-downs together.
 - The selected month is preserved while navigating between pages.
 - A floating quick-add transaction button is available on every page.
 - A built-in theme toggle switches between light and dark modes and persists locally.
 - Data is stored in MySQL and persists across app stop/start cycles.
 - Stopping the app shuts down the frontend, API, and Docker services without deleting the database volume.
+- The app now includes a dedicated recurring-transactions page instead of mixing recurring management into the transactions page.
 
 ## Tech Stack
 
@@ -83,7 +83,7 @@ This project uses a monorepo-style workspace.
 - `packages/shared` contains shared domain types.
 - `database/migrations` contains the schema and demo seed migrations. `database/schema.sql` remains as a schema reference snapshot.
 - `docker-compose.yml` starts the local MySQL instance.
-- `.private/Plan.md` is the private machine-readable rebuild and planning file kept out of git.
+- `.private/Plan.md` is the private rebuild and planning file kept out of git.
 
 ## How It Works
 
@@ -92,8 +92,9 @@ This project uses a monorepo-style workspace.
 3. The frontend calls the backend using relative `/api` requests through the Vite proxy in development.
 4. The backend validates write payloads with Zod and queries MySQL using `mysql2/promise`.
 5. Dashboard and reports use aggregated month-aware SQL queries.
-6. Transactions are paginated to keep the page responsive as data grows.
-7. TanStack Query manages cache invalidation after create, edit, delete, and undo operations.
+6. Transactions are paginated and filterable to keep the page responsive as data grows.
+7. Recurring schedules can auto-create due transactions through the API.
+8. TanStack Query manages cache invalidation after create, edit, delete, archive, bulk actions, and undo operations.
 
 ## Current Features
 
@@ -101,7 +102,7 @@ This project uses a monorepo-style workspace.
 
 - Previous month, current month, next month buttons
 - Month picker input
-- Same selected month reused across dashboard, transactions, budgets, and reports
+- Same selected month reused across dashboard, transactions, recurring, budgets, and reports
 
 ### Dashboard
 
@@ -110,22 +111,47 @@ This project uses a monorepo-style workspace.
 - Monthly total budget summary
 - Budget allocated summary
 - Remaining budget summary
+- Daily safe-to-spend summary
+- Remaining-days summary
+- Fixed-budget summary
+- Flexible-budget summary
 - Income vs expense trend chart
-- Budget split chart
 - Recent transactions
 - Budget status overview
+- Top merchants
+- Top spending categories
+- Unusual spend alerts
+- Budget risk panel for categories projected to overshoot
 
 ### Transactions
 
 - Add, edit, delete transactions
 - Undo delete for the most recent transaction removal
+- Undo for the most recent bulk delete
 - Delete confirmation before destructive actions
 - Paginated transaction list
+- Search and filters for title, merchant, notes, type, account, and category
+- Export filtered transactions to CSV
+- Bulk delete
+- Bulk recategorize
+- Sticky filter panel
 - SweetAlert delete confirmation and undo restore flow
 - Floating quick-add button visible on every page
-- Generic payment type selection such as `Cash`, `Bank`, `Credit Card`
+- Account selection includes `Bank`, `Cash`, `Credit Card`, `UPI`, `UPI-Lite`, and `NEFT`
 - Validation for title, amount, account, category, and month-aligned date
 - Mobile card layout and desktop table layout
+- Mobile cards use direct icon actions instead of overflow menus
+
+### Recurring
+
+- Dedicated recurring page in the main navigation
+- Add, edit, delete recurring schedules
+- Turn recurring schedules on and off
+- Manual `Create due now` action
+- Auto-sync due schedules through the API
+- Recurring form is collapsible
+- Schedule list shows due, upcoming, and inactive state
+- Start date, next due date, and last generated transaction date are shown per schedule
 
 ### Budgets
 
@@ -134,19 +160,29 @@ This project uses a monorepo-style workspace.
 - Add, edit, delete category budgets
 - Remaining-to-allocate summary
 - Spent vs allocated visualization
+- Fixed vs flexible category budget modes are shown
+- Direct icon actions instead of overflow menus
 
 ### Categories
 
 - Seeded default categories
-- Add, edit, delete custom categories
-- Type, color, and icon label fields with icon display in the list
+- Add, edit, archive, restore, and delete custom categories
+- Type, color, icon picker, and budget mode fields
 - Input validation and user-facing errors
+- Duplicate category names are blocked per type
+- Delete is prevented for categories in use unless a same-type replacement category is chosen
+- Replacement selection only appears when delete is initiated on an in-use category
+- Renaming an in-use category warns that existing records will be affected
+- Category activity history is shown in the UI
 
 ### Reports
 
 - Expense distribution for selected month
 - Category totals for selected month
 - Multi-month comparison ending at the selected month
+- Category totals include allocated, spent, and remaining for monthly reports
+- Clicking a monthly category total drills into filtered transactions for that category and month
+- Monthly category CSV export includes budget, spent, and remaining
 
 ### Error handling
 
@@ -154,6 +190,7 @@ This project uses a monorepo-style workspace.
 - Page-level loading states with lightweight skeleton placeholders
 - Page-level error states
 - Backend validation error responses
+- Recent activity panels for category, transaction, and recurring changes
 
 ## Entry Points
 
@@ -181,8 +218,10 @@ The schema includes these main tables:
 - `accounts`
 - `categories`
 - `transactions`
+- `recurring_transactions`
 - `budgets`
 - `monthly_budget_targets`
+- `activity_logs`
 
 Indexes are included for common user/month/date query patterns to keep reporting and month-filtered reads responsive.
 
@@ -289,7 +328,7 @@ npm run build
 
 ## Persistence
 
-Transactions, budgets, categories, and monthly budget data remain available after stopping and starting the app again.
+Transactions, recurring schedules, budgets, categories, activity history, and monthly budget data remain available after stopping and starting the app again.
 
 That persistence works because the Docker stop flow keeps the named MySQL volume instead of deleting it.
 
@@ -297,14 +336,23 @@ That persistence works because the Docker stop flow keeps the named MySQL volume
 
 - `GET /api/health`
 - `GET /api/dashboard?month=YYYY-MM`
-- `GET /api/transactions?month=YYYY-MM&page=1&perPage=10`
+- `GET /api/transactions?month=YYYY-MM&page=1&perPage=10&q=&kind=&accountId=&categoryId=`
+- `GET /api/transactions/export?month=YYYY-MM&q=&kind=&accountId=&categoryId=`
 - `POST /api/transactions`
 - `PUT /api/transactions/:id`
 - `DELETE /api/transactions/:id`
+- `POST /api/transactions/bulk-delete`
+- `POST /api/transactions/bulk-recategorize`
+- `GET /api/recurring-transactions`
+- `POST /api/recurring-transactions`
+- `PUT /api/recurring-transactions/:id`
+- `DELETE /api/recurring-transactions/:id`
+- `POST /api/recurring-transactions/sync`
 - `GET /api/categories`
 - `POST /api/categories`
 - `PUT /api/categories/:id`
 - `DELETE /api/categories/:id`
+- `PUT /api/categories/:id/archive`
 - `GET /api/accounts`
 - `GET /api/monthly-budget?month=YYYY-MM`
 - `PUT /api/monthly-budget`
@@ -313,10 +361,11 @@ That persistence works because the Docker stop flow keeps the named MySQL volume
 - `PUT /api/budgets/:id`
 - `DELETE /api/budgets/:id`
 - `GET /api/reports/overview?month=YYYY-MM`
+- `GET /api/activity`
 
 ## Notes For Future Work
 
 - Barcode scanning is still deferred.
 - Authentication is not implemented yet.
-- Good next additions are recurring transactions, savings goals, CSV import/export, alerts, attachments, and account management UI.
+- Good next additions are savings goals, CSV import, attachments, and account management UI.
 - `.private/Plan.md` should be updated before and after future feature work.
