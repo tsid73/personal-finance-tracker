@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseTransactionPagination } from "./transactions.js";
+import { parseTransactionFilters, parseTransactionPagination } from "./transactions.js";
 
 test("parseTransactionPagination applies defaults", () => {
   assert.deepEqual(parseTransactionPagination({}), {
@@ -20,4 +20,38 @@ test("parseTransactionPagination computes offset", () => {
 
 test("parseTransactionPagination rejects invalid page sizes", () => {
   assert.throws(() => parseTransactionPagination({ perPage: "100" }));
+});
+
+test("parseTransactionFilters normalizes empty values", () => {
+  assert.deepEqual(
+    parseTransactionFilters({
+      q: "   ",
+      kind: "",
+      accountId: "",
+      categoryId: undefined
+    }),
+    {
+      q: undefined,
+      kind: undefined,
+      accountId: undefined,
+      categoryId: undefined
+    }
+  );
+});
+
+test("parseTransactionFilters parses valid filters", () => {
+  assert.deepEqual(
+    parseTransactionFilters({
+      q: "rent",
+      kind: "expense",
+      accountId: "2",
+      categoryId: "5"
+    }),
+    {
+      q: "rent",
+      kind: "expense",
+      accountId: 2,
+      categoryId: 5
+    }
+  );
 });

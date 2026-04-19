@@ -3,7 +3,7 @@ import express from "express";
 import { ZodError, z } from "zod";
 import { env } from "./config.js";
 import { pool } from "./db.js";
-import { parseTransactionPagination } from "./transactions.js";
+import { parseTransactionFilters, parseTransactionPagination } from "./transactions.js";
 
 const app = express();
 const demoUserId = 1;
@@ -220,16 +220,50 @@ app.get("/api/transactions", async (request, response) => {
     page: request.query.page,
     perPage: request.query.perPage
   });
+  const filters = parseTransactionFilters({
+    q: request.query.q,
+    kind: request.query.kind,
+    accountId: request.query.accountId,
+    categoryId: request.query.categoryId
+  });
+
+  const whereClauses = [
+    "t.user_id = ?",
+    "MONTH(t.transaction_date) = ?",
+    "YEAR(t.transaction_date) = ?"
+  ];
+  const whereParams: Array<string | number> = [demoUserId, selected.month, selected.year];
+
+  if (filters.q) {
+    whereClauses.push("(t.title LIKE ? OR COALESCE(t.merchant, '') LIKE ? OR COALESCE(t.notes, '') LIKE ?)");
+    const query = `%${filters.q}%`;
+    whereParams.push(query, query, query);
+  }
+
+  if (filters.kind) {
+    whereClauses.push("t.kind = ?");
+    whereParams.push(filters.kind);
+  }
+
+  if (filters.accountId) {
+    whereClauses.push("t.account_id = ?");
+    whereParams.push(filters.accountId);
+  }
+
+  if (filters.categoryId) {
+    whereClauses.push("t.category_id = ?");
+    whereParams.push(filters.categoryId);
+  }
+
+  const whereSql = whereClauses.join("\n        AND ");
 
   const [countRows] = await pool.query(
     `
       SELECT COUNT(*) AS total
       FROM transactions t
-      WHERE t.user_id = ?
-        AND MONTH(t.transaction_date) = ?
-        AND YEAR(t.transaction_date) = ?
+      WHERE ${whereSql}
     `,
-    [demoUserId, selected.month, selected.year]
+    whereParams
   );
 
   const [rows] = await pool.query(
@@ -243,27 +277,19 @@ app.get("/api/transactions", async (request, response) => {
         t.merchant,
         DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS transactionDate,
         t.account_id AS accountId,
-        CASE
-          WHEN a.type = 'bank' THEN 'Bank'
-          WHEN a.type = 'cash' THEN 'Cash'
-          WHEN a.type = 'credit' THEN 'Credit Card'
-          WHEN a.type = 'wallet' THEN 'Wallet'
-          ELSE a.name
-        END AS accountLabel,
+        a.name AS accountLabel,
         t.category_id AS categoryId,
         c.name AS categoryName,
         c.color AS categoryColor
       FROM transactions t
       JOIN accounts a ON a.id = t.account_id
       JOIN categories c ON c.id = t.category_id
-      WHERE t.user_id = ?
-        AND MONTH(t.transaction_date) = ?
-        AND YEAR(t.transaction_date) = ?
+      WHERE ${whereSql}
       ORDER BY t.transaction_date DESC, t.id DESC
       LIMIT ?
       OFFSET ?
     `,
-    [demoUserId, selected.month, selected.year, pagination.perPage, pagination.offset]
+    [...whereParams, pagination.perPage, pagination.offset]
   );
 
   const totalItems = Number(Array.isArray(countRows) ? (countRows[0] as Record<string, number>)?.total ?? 0 : 0);
@@ -364,10 +390,20 @@ app.delete("/api/categories/:id", async (request, response) => {
 app.get("/api/accounts", async (_request, response) => {
   const [rows] = await pool.query(
     `
-      SELECT id, type
+      SELECT id, name, type
       FROM accounts
       WHERE user_id = ?
-      ORDER BY FIELD(type, 'cash', 'bank', 'credit', 'wallet'), id
+      ORDER BY
+        CASE
+          WHEN name = 'Bank' THEN 1
+          WHEN name = 'Cash' THEN 2
+          WHEN name = 'Credit Card' THEN 3
+          WHEN name = 'UPI' THEN 4
+          WHEN name = 'UPI-Lite' THEN 5
+          WHEN name = 'NEFT' THEN 6
+          ELSE 99
+        END,
+        id
     `,
     [demoUserId]
   );
@@ -376,14 +412,7 @@ app.get("/api/accounts", async (_request, response) => {
     ? rows.map((row: any) => ({
         id: row.id,
         type: row.type,
-        label:
-          row.type === "cash"
-            ? "Cash"
-            : row.type === "bank"
-              ? "Bank"
-              : row.type === "credit"
-                ? "Credit Card"
-                : "Wallet"
+        label: row.name
       }))
     : [];
 
@@ -523,19 +552,34 @@ app.get("/api/reports/overview", async (request, response) => {
   const [categoryRows] = await pool.query(
     `
       SELECT
+        c.id AS categoryId,
         c.name AS category,
         c.color,
-        SUM(t.amount) AS total
-      FROM transactions t
-      JOIN categories c ON c.id = t.category_id
-      WHERE t.user_id = ?
-        AND t.kind = 'expense'
-        AND MONTH(t.transaction_date) = ?
-        AND YEAR(t.transaction_date) = ?
-      GROUP BY c.name, c.color
-      ORDER BY total DESC
+        COALESCE(b.allocated_amount, 0) AS allocatedAmount,
+        COALESCE(tx.spentAmount, 0) AS spentAmount
+      FROM categories c
+      LEFT JOIN budgets b
+        ON b.category_id = c.id
+        AND b.user_id = ?
+        AND b.month = ?
+        AND b.year = ?
+      LEFT JOIN (
+        SELECT
+          category_id,
+          SUM(amount) AS spentAmount
+        FROM transactions
+        WHERE user_id = ?
+          AND kind = 'expense'
+          AND MONTH(transaction_date) = ?
+          AND YEAR(transaction_date) = ?
+        GROUP BY category_id
+      ) tx ON tx.category_id = c.id
+      WHERE (c.user_id IS NULL OR c.user_id = ?)
+        AND c.type = 'expense'
+        AND (b.id IS NOT NULL OR tx.spentAmount IS NOT NULL)
+      ORDER BY spentAmount DESC, allocatedAmount DESC, c.name
     `,
-    [demoUserId, selected.month, selected.year]
+    [demoUserId, selected.month, selected.year, demoUserId, selected.month, selected.year, demoUserId]
   );
 
   const [monthlyRows] = await pool.query(
@@ -589,6 +633,7 @@ app.get("/api/reports/overview", async (request, response) => {
   const [yearlyCategoryRows] = await pool.query(
     `
       SELECT
+        c.id AS categoryId,
         c.name AS category,
         c.color,
         SUM(t.amount) AS total
@@ -597,7 +642,7 @@ app.get("/api/reports/overview", async (request, response) => {
       WHERE t.user_id = ?
         AND t.kind = 'expense'
         AND YEAR(t.transaction_date) = ?
-      GROUP BY c.name, c.color
+      GROUP BY c.id, c.name, c.color
       ORDER BY total DESC
     `,
     [demoUserId, selectedYear]

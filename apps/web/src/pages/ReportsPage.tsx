@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Download, PieChart as PieChartIcon, TrendingUp } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ErrorState, LoadingState } from "../components/PageState";
 import { api } from "../lib/api";
@@ -12,6 +13,7 @@ type ReportScope = "monthly" | "yearly";
 export function ReportsPage() {
   const { selectedMonth, selectedMonthLabel } = useAppShellContext();
   const [reportScope, setReportScope] = useState<ReportScope>("monthly");
+  const navigate = useNavigate();
   const { data, isLoading, isError } = useQuery({
     queryKey: ["reports", selectedMonth],
     queryFn: async () => (await api.get("/reports/overview", { params: { month: selectedMonth } })).data
@@ -32,7 +34,10 @@ export function ReportsPage() {
     () =>
       ((isMonthly ? data?.categoryTotals : data?.yearlyCategoryTotals) ?? []).map((item: any) => ({
         ...item,
-        total: Number(item.total ?? 0)
+        total: Number(item.spentAmount ?? item.total ?? 0),
+        allocatedAmount: Number(item.allocatedAmount ?? 0),
+        spentAmount: Number(item.spentAmount ?? item.total ?? 0),
+        remainingAmount: Number(item.allocatedAmount ?? 0) - Number(item.spentAmount ?? item.total ?? 0)
       })),
     [data?.categoryTotals, data?.yearlyCategoryTotals, isMonthly]
   );
@@ -145,10 +150,19 @@ export function ReportsPage() {
                 onClick={() =>
                   downloadCsv(
                     `${reportScope}-categories-${selectedMonth}.csv`,
-                    categoryData.map((item: any) => ({
-                      category: item.category,
-                      total: Number(item.total ?? 0)
-                    }))
+                    categoryData.map((item: any) =>
+                      isMonthly
+                        ? {
+                            category: item.category,
+                            budget: Number(item.allocatedAmount ?? 0),
+                            spent: Number(item.spentAmount ?? 0),
+                            remaining: Number(item.remainingAmount ?? 0)
+                          }
+                        : {
+                            category: item.category,
+                            total: Number(item.total ?? 0)
+                          }
+                    )
                   )
                 }
               >
@@ -253,21 +267,54 @@ export function ReportsPage() {
 
       <div className="card p-5 sm:p-6 dark:border dark:border-slate-800">
         <div className="section-title">{isMonthly ? "Category totals" : "Yearly category totals"}</div>
+        <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          {isMonthly ? "Select a category to open matching transactions for the selected month." : "Category totals for the selected year."}
+        </div>
         <div className="mt-4 space-y-3">
           {categoryData.length === 0 ? (
             <div className="rounded-lg bg-mist px-4 py-6 text-sm text-slate-500 dark:bg-slate-800 dark:text-slate-400">
               {isMonthly ? "No expense transactions found for this month." : "No expense transactions found for this year."}
             </div>
           ) : (
-            categoryData.map((item: any) => (
-              <div key={item.category} className="flex items-center justify-between gap-4 rounded-lg bg-mist px-4 py-3 dark:bg-slate-800">
-                <div className="min-w-0 flex items-center gap-3">
-                  <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="truncate font-medium text-ink dark:text-slate-100">{item.category}</span>
+            categoryData.map((item: any) =>
+              isMonthly ? (
+                <button
+                  key={item.category}
+                  type="button"
+                  className="flex w-full flex-col gap-4 rounded-lg bg-mist px-4 py-4 text-left transition hover:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 sm:flex-row sm:items-center sm:justify-between"
+                  onClick={() => navigate(`/transactions?month=${selectedMonth}&kind=expense&categoryId=${item.categoryId}`)}
+                >
+                  <div className="min-w-0 flex items-center gap-3">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="truncate font-medium text-ink dark:text-slate-100">{item.category}</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 sm:min-w-[360px]">
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Allocated</div>
+                      <div className="tabular-nums mt-1 font-medium text-ink dark:text-slate-100">{formatCurrency(Number(item.allocatedAmount))}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Spent</div>
+                      <div className="tabular-nums mt-1 font-medium text-ink dark:text-slate-100">{formatCurrency(Number(item.spentAmount))}</div>
+                    </div>
+                    <div>
+                      <div className="text-[11px] uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Remaining</div>
+                      <div className={`tabular-nums mt-1 font-medium ${Number(item.remainingAmount) < 0 ? "text-rose-600" : "text-emerald-600"}`}>
+                        {formatCurrency(Number(item.remainingAmount))}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ) : (
+                <div key={item.category} className="flex items-center justify-between gap-4 rounded-lg bg-mist px-4 py-3 dark:bg-slate-800">
+                  <div className="min-w-0 flex items-center gap-3">
+                    <span className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span className="truncate font-medium text-ink dark:text-slate-100">{item.category}</span>
+                  </div>
+                  <span className="tabular-nums shrink-0 font-medium text-ink dark:text-slate-100">{formatCurrency(Number(item.total))}</span>
                 </div>
-                <span className="tabular-nums shrink-0 font-medium text-ink dark:text-slate-100">{formatCurrency(Number(item.total))}</span>
-              </div>
-            ))
+              )
+            )
           )}
         </div>
       </div>

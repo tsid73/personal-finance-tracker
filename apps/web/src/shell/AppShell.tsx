@@ -1,4 +1,4 @@
-import { BarChart3, CalendarDays, ChevronLeft, ChevronRight, LayoutDashboard, ListTodo, Moon, Plus, Shapes, SunMedium, Wallet } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, LayoutDashboard, ListTodo, Moon, Plus, Shapes, SunMedium, Wallet } from "lucide-react";
 import { Link, NavLink, Outlet, useSearchParams } from "react-router-dom";
 import { useTheme } from "../lib/theme";
 import { formatMonthLabel, getCurrentMonth, shiftMonth } from "./month";
@@ -69,18 +69,9 @@ export function AppShell() {
         <main className="space-y-6">
           <header className="card flex flex-col gap-5 p-5 sm:p-6 dark:border dark:border-slate-800">
             <div>
-              <div className="text-sm uppercase tracking-[0.3em] text-slate-400 dark:text-slate-500">Overview</div>
-              <h2 className="mt-2 text-3xl font-semibold text-ink dark:text-slate-100">Budget and finance tracker</h2>
+              <h2 className="text-3xl font-semibold text-ink dark:text-slate-100">Budget and finance tracker</h2>
             </div>
-            <div className="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)] md:items-end">
-              <div>
-                <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">
-                  <CalendarDays className="h-4 w-4" aria-hidden="true" />
-                  Selected month
-                </div>
-                <div className="mt-2 text-2xl font-semibold text-ink dark:text-slate-100">{selectedMonthLabel}</div>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
                 <div className="flex gap-2">
                   <button
                     className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
@@ -113,7 +104,6 @@ export function AppShell() {
                   value={selectedMonth}
                   onChange={(event) => updateMonth(event.target.value)}
                 />
-              </div>
             </div>
           </header>
 
