@@ -6,11 +6,13 @@ interface SummaryCardProps {
   value: number;
   tone?: "default" | "success" | "danger";
   icon?: LucideIcon;
+  format?: "currency" | "number";
 }
 
-export function SummaryCard({ label, value, tone = "default", icon: Icon }: SummaryCardProps) {
+export function SummaryCard({ label, value, tone = "default", icon: Icon, format = "currency" }: SummaryCardProps) {
   const toneClass =
     tone === "success" ? "text-emerald-600" : tone === "danger" ? "text-rose-600" : "text-ink";
+  const displayValue = format === "number" ? new Intl.NumberFormat("en-IN").format(value) : formatCurrency(value);
 
   return (
     <div className="card p-5 dark:border dark:border-slate-800">
@@ -18,7 +20,7 @@ export function SummaryCard({ label, value, tone = "default", icon: Icon }: Summ
         <div className="min-w-0 text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{label}</div>
         {Icon ? <Icon className="h-5 w-5 shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true" /> : null}
       </div>
-      <div className={`tabular-nums mt-3 text-3xl font-semibold dark:text-slate-100 ${toneClass}`}>{formatCurrency(value)}</div>
+      <div className={`tabular-nums mt-3 text-3xl font-semibold dark:text-slate-100 ${toneClass}`}>{displayValue}</div>
     </div>
   );
 }

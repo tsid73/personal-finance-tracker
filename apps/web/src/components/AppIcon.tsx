@@ -17,7 +17,7 @@ import {
   Tag
 } from "lucide-react";
 
-const iconMap: Record<string, LucideIcon> = {
+export const iconMap: Record<string, LucideIcon> = {
   salary: BadgeIndianRupee,
   income: ArrowUpCircle,
   expense: ArrowDownCircle,
@@ -40,6 +40,25 @@ const iconMap: Record<string, LucideIcon> = {
   card: CreditCard,
   tag: Tag
 };
+
+export const iconOptions = [
+  "tag",
+  "salary",
+  "income",
+  "expense",
+  "groceries",
+  "shopping",
+  "transport",
+  "rent",
+  "savings",
+  "health",
+  "subscriptions",
+  "utilities",
+  "freelance",
+  "bonus",
+  "cash",
+  "card"
+];
 
 export function AppIcon({
   name,

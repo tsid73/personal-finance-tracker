@@ -12,6 +12,7 @@ import "./styles.css";
 const queryClient = new QueryClient();
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
 const TransactionsPage = lazy(() => import("./pages/TransactionsPage").then((module) => ({ default: module.TransactionsPage })));
+const RecurringPage = lazy(() => import("./pages/RecurringPage").then((module) => ({ default: module.RecurringPage })));
 const BudgetsPage = lazy(() => import("./pages/BudgetsPage").then((module) => ({ default: module.BudgetsPage })));
 const CategoriesPage = lazy(() => import("./pages/CategoriesPage").then((module) => ({ default: module.CategoriesPage })));
 const ReportsPage = lazy(() => import("./pages/ReportsPage").then((module) => ({ default: module.ReportsPage })));
@@ -29,6 +30,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "dashboard", element: withSuspense(<DashboardPage />) },
       { path: "transactions", element: withSuspense(<TransactionsPage />) },
+      { path: "recurring", element: withSuspense(<RecurringPage />) },
       { path: "budgets", element: withSuspense(<BudgetsPage />) },
       { path: "categories", element: withSuspense(<CategoriesPage />) },
       { path: "reports", element: withSuspense(<ReportsPage />) }

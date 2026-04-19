@@ -32,6 +32,22 @@ export async function confirmDestructiveAction(title: string, text: string, conf
   return result.isConfirmed;
 }
 
+export async function confirmImpactAction(title: string, text: string, confirmButtonText: string) {
+  const result = await Swal.fire({
+    title,
+    text,
+    icon: "warning",
+    showCancelButton: true,
+    focusCancel: true,
+    confirmButtonText,
+    cancelButtonText: "Cancel",
+    confirmButtonColor: "#102a43",
+    ...themedOptions()
+  });
+
+  return result.isConfirmed;
+}
+
 export async function showSuccessToast(title: string) {
   await Swal.fire({
     title,
