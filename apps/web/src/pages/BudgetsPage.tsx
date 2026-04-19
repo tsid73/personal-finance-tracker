@@ -244,7 +244,9 @@ export function BudgetsPage() {
                     </div>
                     <div className="inline-flex gap-2">
                       <button
-                        className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium dark:border-slate-700 dark:text-slate-200"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-950"
+                        aria-label={`Edit ${item.categoryName} budget`}
+                        title={`Edit ${item.categoryName} budget`}
                         onClick={() => {
                           setEditingId(item.id);
                           setForm({ categoryId: String(item.categoryId), allocatedAmount: String(item.allocatedAmount) });
@@ -252,11 +254,14 @@ export function BudgetsPage() {
                         }}
                       >
                         <PencilLine className="h-4 w-4" aria-hidden="true" />
-                        Edit
                       </button>
-                      <button className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600 dark:border-rose-900 dark:text-rose-300" onClick={() => void requestDelete()}>
+                      <button
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-white dark:border-rose-900 dark:text-rose-300 dark:hover:bg-slate-950"
+                        aria-label={`Delete ${item.categoryName} budget`}
+                        title={`Delete ${item.categoryName} budget`}
+                        onClick={() => void requestDelete()}
+                      >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />
-                        Delete
                       </button>
                     </div>
                   </div>

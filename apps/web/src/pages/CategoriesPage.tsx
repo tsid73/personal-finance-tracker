@@ -119,8 +119,8 @@ export function CategoriesPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             {data.map((item: any) => (
               <div key={item.id} className="rounded-lg border border-slate-100 bg-mist p-5 dark:border-slate-800 dark:bg-slate-800">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex items-center gap-3">
                     <span className="inline-flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: `${item.color}22`, color: item.color }}>
                       <AppIcon name={item.icon} className="h-5 w-5" />
                     </span>
@@ -132,14 +132,28 @@ export function CategoriesPage() {
                   {item.isDefault ? (
                     <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-500 dark:bg-slate-950 dark:text-slate-400">Default</span>
                   ) : (
-                    <div className="inline-flex gap-2">
-                      <button className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium dark:border-slate-700 dark:text-slate-200" onClick={() => { setEditingId(item.id); setForm({ name: item.name, type: item.type, color: item.color, icon: item.icon }); setFormError(null); }}><Edit3 className="h-4 w-4" aria-hidden="true" />Edit</button>
-                      <button className="inline-flex items-center gap-2 rounded-lg border border-rose-200 px-3 py-2 text-xs font-medium text-rose-600 dark:border-rose-900 dark:text-rose-300" onClick={async () => {
+                    <div className="flex shrink-0 items-center gap-2 self-start">
+                      <button
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-950"
+                        aria-label={`Edit ${item.name}`}
+                        title={`Edit ${item.name}`}
+                        onClick={() => { setEditingId(item.id); setForm({ name: item.name, type: item.type, color: item.color, icon: item.icon }); setFormError(null); }}
+                      >
+                        <Edit3 className="h-4 w-4" aria-hidden="true" />
+                      </button>
+                      <button
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-white dark:border-rose-900 dark:text-rose-300 dark:hover:bg-slate-950"
+                        aria-label={`Delete ${item.name}`}
+                        title={`Delete ${item.name}`}
+                        onClick={async () => {
                         const confirmed = await confirmDestructiveAction("Delete category?", `Delete "${item.name}"?`, "Delete");
                         if (confirmed) {
                           deleteMutation.mutate(item.id);
                         }
-                      }}><Trash2 className="h-4 w-4" aria-hidden="true" />Delete</button>
+                      }}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden="true" />
+                      </button>
                     </div>
                   )}
                 </div>
