@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   type ENUM('cash', 'bank', 'wallet', 'credit') NOT NULL DEFAULT 'bank',
   balance DECIMAL(12, 2) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT uq_accounts_user_name UNIQUE (user_id, name),
   CONSTRAINT fk_accounts_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_accounts_user_type ON accounts (user_id, type);
@@ -27,16 +28,56 @@ CREATE TABLE IF NOT EXISTS categories (
   color VARCHAR(20) NOT NULL DEFAULT '#0f766e',
   icon VARCHAR(40) NOT NULL DEFAULT 'wallet',
   is_default BOOLEAN NOT NULL DEFAULT FALSE,
+  is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+  budget_mode ENUM('fixed', 'flexible') NOT NULL DEFAULT 'flexible',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_categories_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 CREATE INDEX idx_categories_user_type_name ON categories (user_id, type, name);
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  entity_type VARCHAR(40) NOT NULL,
+  entity_id INT NULL,
+  action VARCHAR(40) NOT NULL,
+  title VARCHAR(160) NOT NULL,
+  note VARCHAR(300) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_activity_logs_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+CREATE INDEX idx_activity_logs_user_created ON activity_logs (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS recurring_transactions (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  user_id INT NOT NULL,
+  account_id INT NOT NULL,
+  category_id INT NOT NULL,
+  kind ENUM('income', 'expense') NOT NULL,
+  title VARCHAR(140) NOT NULL,
+  notes TEXT NULL,
+  merchant VARCHAR(120) NULL,
+  amount DECIMAL(12, 2) NOT NULL,
+  frequency ENUM('monthly') NOT NULL DEFAULT 'monthly',
+  day_of_month TINYINT NOT NULL,
+  start_date DATE NOT NULL,
+  next_due_date DATE NOT NULL,
+  auto_create BOOLEAN NOT NULL DEFAULT TRUE,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_recurring_transactions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_recurring_transactions_account FOREIGN KEY (account_id) REFERENCES accounts(id),
+  CONSTRAINT fk_recurring_transactions_category FOREIGN KEY (category_id) REFERENCES categories(id)
+);
+CREATE INDEX idx_recurring_transactions_user_due ON recurring_transactions (user_id, is_active, next_due_date);
 
 CREATE TABLE IF NOT EXISTS transactions (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
   account_id INT NOT NULL,
   category_id INT NOT NULL,
+  recurring_transaction_id INT NULL,
   kind ENUM('income', 'expense') NOT NULL,
   title VARCHAR(140) NOT NULL,
   notes TEXT NULL,
@@ -47,10 +88,12 @@ CREATE TABLE IF NOT EXISTS transactions (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT fk_transactions_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_transactions_account FOREIGN KEY (account_id) REFERENCES accounts(id),
-  CONSTRAINT fk_transactions_category FOREIGN KEY (category_id) REFERENCES categories(id)
+  CONSTRAINT fk_transactions_category FOREIGN KEY (category_id) REFERENCES categories(id),
+  CONSTRAINT fk_transactions_recurring_transaction FOREIGN KEY (recurring_transaction_id) REFERENCES recurring_transactions(id) ON DELETE SET NULL
 );
 CREATE INDEX idx_transactions_user_date ON transactions (user_id, transaction_date);
 CREATE INDEX idx_transactions_user_category_date ON transactions (user_id, category_id, transaction_date);
+CREATE INDEX idx_transactions_recurring_date ON transactions (recurring_transaction_id, transaction_date);
 
 CREATE TABLE IF NOT EXISTS budgets (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -88,7 +131,10 @@ INSERT INTO accounts (id, user_id, name, type, balance)
 VALUES
   (1, 1, 'Bank', 'bank', 42850.00),
   (2, 1, 'Cash', 'cash', 2400.00),
-  (3, 1, 'Credit Card', 'credit', -3800.00)
+  (3, 1, 'Credit Card', 'credit', -3800.00),
+  (4, 1, 'UPI', 'bank', 0.00),
+  (5, 1, 'UPI-Lite', 'bank', 0.00),
+  (6, 1, 'NEFT', 'bank', 0.00)
 ON DUPLICATE KEY UPDATE name = VALUES(name), balance = VALUES(balance);
 
 INSERT INTO categories (id, user_id, name, type, color, icon, is_default)

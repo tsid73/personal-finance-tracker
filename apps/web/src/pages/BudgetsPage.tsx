@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { CircleDollarSign, PencilLine, PiggyBank, Save, Tag, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ErrorState, LoadingState } from "../components/PageState";
+import { CardGridLoadingState, ErrorState } from "../components/PageState";
 import { api } from "../lib/api";
 import { confirmDestructiveAction, showErrorToast, showSuccessToast } from "../lib/alerts";
 import { getErrorMessage } from "../lib/errors";
@@ -40,6 +40,8 @@ export function BudgetsPage() {
 
   const expenseCategories = categories.filter((category: any) => category.type === "expense");
   const allocatedTotal = data.reduce((sum: number, item: any) => sum + Number(item.allocatedAmount), 0);
+  const fixedAllocated = data.reduce((sum: number, item: any) => sum + (item.budgetMode === "fixed" ? Number(item.allocatedAmount) : 0), 0);
+  const flexibleAllocated = data.reduce((sum: number, item: any) => sum + (item.budgetMode === "flexible" ? Number(item.allocatedAmount) : 0), 0);
   const monthlyTarget = Number(monthlyBudgetData?.totalBudget ?? 0);
 
   const refreshQueries = async () => {
@@ -157,7 +159,7 @@ export function BudgetsPage() {
             </button>
           </div>
           {monthlyBudgetError ? <div className="mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:bg-rose-950/40" aria-live="polite">{monthlyBudgetError}</div> : null}
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-lg bg-mist px-4 py-4 dark:bg-slate-800">
               <div className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Monthly target</div>
               <div className="tabular-nums mt-2 text-lg font-semibold text-ink dark:text-slate-100">{formatCurrency(monthlyTarget)}</div>
@@ -171,6 +173,14 @@ export function BudgetsPage() {
               <div className={`tabular-nums mt-2 text-lg font-semibold ${monthlyTarget - allocatedTotal < 0 ? "text-rose-600" : "text-emerald-600"}`}>
                 {formatCurrency(monthlyTarget - allocatedTotal)}
               </div>
+            </div>
+            <div className="rounded-lg bg-mist px-4 py-4 dark:bg-slate-800">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Fixed allocated</div>
+              <div className="tabular-nums mt-2 text-lg font-semibold text-ink dark:text-slate-100">{formatCurrency(fixedAllocated)}</div>
+            </div>
+            <div className="rounded-lg bg-mist px-4 py-4 dark:bg-slate-800">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">Flexible allocated</div>
+              <div className="tabular-nums mt-2 text-lg font-semibold text-ink dark:text-slate-100">{formatCurrency(flexibleAllocated)}</div>
             </div>
           </div>
         </div>
@@ -216,7 +226,7 @@ export function BudgetsPage() {
       </div>
 
       {isLoading ? (
-        <LoadingState message="Loading budgets…" />
+        <CardGridLoadingState count={6} />
       ) : isError ? (
         <ErrorState message="Unable to load budgets for the selected month." />
       ) : (
@@ -241,12 +251,13 @@ export function BudgetsPage() {
                     <div className="min-w-0">
                       <div className="text-sm uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500">{selectedMonthLabel}</div>
                       <div className="mt-2 truncate text-xl font-semibold text-ink dark:text-slate-100">{item.categoryName}</div>
+                      <div className="mt-2 inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">{item.budgetMode === "fixed" ? "Fixed" : "Flexible"}</div>
                     </div>
-                    <div className="inline-flex gap-2">
+                    <div className="flex gap-2">
                       <button
                         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-white dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-950"
-                        aria-label={`Edit ${item.categoryName} budget`}
-                        title={`Edit ${item.categoryName} budget`}
+                        aria-label={`Edit budget for ${item.categoryName}`}
+                        title={`Edit budget for ${item.categoryName}`}
                         onClick={() => {
                           setEditingId(item.id);
                           setForm({ categoryId: String(item.categoryId), allocatedAmount: String(item.allocatedAmount) });
@@ -257,8 +268,8 @@ export function BudgetsPage() {
                       </button>
                       <button
                         className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 text-rose-600 transition hover:bg-white dark:border-rose-900 dark:text-rose-300 dark:hover:bg-slate-950"
-                        aria-label={`Delete ${item.categoryName} budget`}
-                        title={`Delete ${item.categoryName} budget`}
+                        aria-label={`Delete budget for ${item.categoryName}`}
+                        title={`Delete budget for ${item.categoryName}`}
                         onClick={() => void requestDelete()}
                       >
                         <Trash2 className="h-4 w-4" aria-hidden="true" />

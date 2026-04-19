@@ -1,4 +1,4 @@
-import { BarChart3, ChevronLeft, ChevronRight, LayoutDashboard, ListTodo, Moon, Plus, Shapes, SunMedium, Wallet } from "lucide-react";
+import { BarChart3, ChevronLeft, ChevronRight, LayoutDashboard, ListTodo, Moon, Plus, Repeat, Shapes, SunMedium, Wallet } from "lucide-react";
 import { Link, NavLink, Outlet, useSearchParams } from "react-router-dom";
 import { useTheme } from "../lib/theme";
 import { formatMonthLabel, getCurrentMonth, shiftMonth } from "./month";
@@ -6,6 +6,7 @@ import { formatMonthLabel, getCurrentMonth, shiftMonth } from "./month";
 const navigation = [
   { label: "Dashboard", to: "/dashboard", icon: LayoutDashboard },
   { label: "Transactions", to: "/transactions", icon: ListTodo },
+  { label: "Recurring", to: "/recurring", icon: Repeat },
   { label: "Budgets", to: "/budgets", icon: Wallet },
   { label: "Categories", to: "/categories", icon: Shapes },
   { label: "Reports", to: "/reports", icon: BarChart3 }

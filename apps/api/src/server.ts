@@ -3,6 +3,7 @@ import express from "express";
 import { ZodError, z } from "zod";
 import { env } from "./config.js";
 import { pool } from "./db.js";
+import { getInitialNextDueDate, getRecurringStatus, syncRecurringTransactions } from "./recurring.js";
 import { parseTransactionFilters, parseTransactionPagination } from "./transactions.js";
 
 const app = express();
@@ -25,7 +26,9 @@ const categorySchema = z.object({
   name: z.string().trim().min(2, "Category name must be at least 2 characters.").max(80, "Category name is too long."),
   type: z.enum(["income", "expense"]),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color must be a valid hex code."),
-  icon: z.string().trim().min(1, "Icon label is required.").max(40, "Icon label is too long.")
+  icon: z.string().trim().min(1, "Icon label is required.").max(40, "Icon label is too long."),
+  budgetMode: z.enum(["fixed", "flexible"]).default("flexible"),
+  changeNote: z.string().trim().max(300, "Change note must be 300 characters or less.").optional().nullable()
 });
 
 const budgetSchema = z.object({
@@ -39,6 +42,41 @@ const monthlyBudgetSchema = z.object({
   month: z.coerce.number().int().min(1).max(12),
   year: z.coerce.number().int().min(2000),
   totalBudget: z.coerce.number().min(0, "Monthly budget cannot be negative.")
+});
+
+const recurringTransactionSchema = z.object({
+  title: z.string().trim().min(2, "Title must be at least 2 characters."),
+  kind: z.enum(["income", "expense"]),
+  amount: z.coerce.number().positive("Amount must be greater than zero."),
+  notes: z.string().trim().max(300, "Notes must be 300 characters or less.").optional().nullable(),
+  merchant: z.string().trim().max(120, "Merchant must be 120 characters or less.").optional().nullable(),
+  accountId: z.coerce.number().int().positive(),
+  categoryId: z.coerce.number().int().positive(),
+  dayOfMonth: z.coerce.number().int().min(1).max(31),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Start date must be in YYYY-MM-DD format."),
+  autoCreate: z.boolean().default(true),
+  isActive: z.boolean().default(true)
+});
+
+const bulkDeleteTransactionsSchema = z.object({
+  ids: z.array(z.coerce.number().int().positive()).min(1, "Select at least one transaction."),
+  note: z.string().trim().max(300).optional().nullable()
+});
+
+const bulkRecategorizeTransactionsSchema = z.object({
+  ids: z.array(z.coerce.number().int().positive()).min(1, "Select at least one transaction."),
+  categoryId: z.coerce.number().int().positive(),
+  note: z.string().trim().max(300).optional().nullable()
+});
+
+const archiveCategorySchema = z.object({
+  isArchived: z.boolean(),
+  changeNote: z.string().trim().max(300).optional().nullable()
+});
+
+const deleteCategorySchema = z.object({
+  reassignmentCategoryId: z.coerce.number().int().positive().optional(),
+  changeNote: z.string().trim().max(300).optional().nullable()
 });
 
 app.use(cors({ origin: [env.CLIENT_ORIGIN, "http://127.0.0.1:5173", "http://localhost:5173"] }));
@@ -101,6 +139,81 @@ function buildTrailingYears(year: number, count: number) {
   });
 }
 
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month, 0).getDate();
+}
+
+function buildTransactionWhereClause(selected: { month: number; year: number }, filters: ReturnType<typeof parseTransactionFilters>) {
+  const whereClauses = [
+    "t.user_id = ?",
+    "MONTH(t.transaction_date) = ?",
+    "YEAR(t.transaction_date) = ?"
+  ];
+  const whereParams: Array<string | number> = [demoUserId, selected.month, selected.year];
+
+  if (filters.q) {
+    whereClauses.push("(t.title LIKE ? OR COALESCE(t.merchant, '') LIKE ? OR COALESCE(t.notes, '') LIKE ?)");
+    const query = `%${filters.q}%`;
+    whereParams.push(query, query, query);
+  }
+
+  if (filters.kind) {
+    whereClauses.push("t.kind = ?");
+    whereParams.push(filters.kind);
+  }
+
+  if (filters.accountId) {
+    whereClauses.push("t.account_id = ?");
+    whereParams.push(filters.accountId);
+  }
+
+  if (filters.categoryId) {
+    whereClauses.push("t.category_id = ?");
+    whereParams.push(filters.categoryId);
+  }
+
+  return {
+    whereSql: whereClauses.join("\n        AND "),
+    whereParams
+  };
+}
+
+async function logActivity(entityType: string, entityId: number | null, action: string, title: string, note?: string | null) {
+  await pool.execute(
+    `
+      INSERT INTO activity_logs (user_id, entity_type, entity_id, action, title, note)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `,
+    [demoUserId, entityType, entityId, action, title, note ?? null]
+  );
+}
+
+async function ensureCategoryUnique(name: string, type: "income" | "expense", excludeId?: number) {
+  const [rows] = await pool.query(
+    `
+      SELECT id
+      FROM categories
+      WHERE LOWER(name) = LOWER(?)
+        AND type = ?
+        AND is_archived = FALSE
+        AND (user_id IS NULL OR user_id = ?)
+        ${excludeId ? "AND id <> ?" : ""}
+      LIMIT 1
+    `,
+    excludeId ? [name, type, demoUserId, excludeId] : [name, type, demoUserId]
+  );
+
+  if (Array.isArray(rows) && rows.length > 0) {
+    throw new ZodError([
+      {
+        code: "custom",
+        path: ["name"],
+        message: "A category with this name already exists for the selected type."
+      }
+    ]);
+  }
+}
+
 app.get("/api/health", async (_request, response) => {
   await pool.query("SELECT 1");
   response.json({ ok: true });
@@ -151,6 +264,7 @@ app.get("/api/dashboard", async (request, response) => {
         b.id,
         c.name AS categoryName,
         c.color,
+        c.budget_mode AS budgetMode,
         b.allocated_amount AS allocatedAmount,
         COALESCE(SUM(t.amount), 0) AS spentAmount
       FROM budgets b
@@ -164,7 +278,7 @@ app.get("/api/dashboard", async (request, response) => {
       WHERE b.user_id = ?
         AND b.month = ?
         AND b.year = ?
-      GROUP BY b.id, c.name, c.color, b.allocated_amount
+      GROUP BY b.id, c.name, c.color, c.budget_mode, b.allocated_amount
       ORDER BY spentAmount DESC, c.name
     `,
     [demoUserId, selected.month, selected.year]
@@ -187,6 +301,62 @@ app.get("/api/dashboard", async (request, response) => {
     [demoUserId, selected.monthKey, selected.monthKey]
   );
 
+  const [merchantRows] = await pool.query(
+    `
+      SELECT
+        COALESCE(NULLIF(TRIM(merchant), ''), 'Unknown merchant') AS merchant,
+        SUM(amount) AS totalSpent,
+        COUNT(*) AS transactionCount
+      FROM transactions
+      WHERE user_id = ?
+        AND kind = 'expense'
+        AND MONTH(transaction_date) = ?
+        AND YEAR(transaction_date) = ?
+      GROUP BY COALESCE(NULLIF(TRIM(merchant), ''), 'Unknown merchant')
+      ORDER BY totalSpent DESC, transactionCount DESC
+      LIMIT 5
+    `,
+    [demoUserId, selected.month, selected.year]
+  );
+
+  const [categoryRows] = await pool.query(
+    `
+      SELECT
+        c.name AS category,
+        c.color,
+        SUM(t.amount) AS totalSpent
+      FROM transactions t
+      JOIN categories c ON c.id = t.category_id
+      WHERE t.user_id = ?
+        AND t.kind = 'expense'
+        AND MONTH(t.transaction_date) = ?
+        AND YEAR(t.transaction_date) = ?
+      GROUP BY c.id, c.name, c.color
+      ORDER BY totalSpent DESC
+      LIMIT 5
+    `,
+    [demoUserId, selected.month, selected.year]
+  );
+
+  const [categoryHistoryRows] = await pool.query(
+    `
+      SELECT
+        c.name AS category,
+        c.color,
+        DATE_FORMAT(t.transaction_date, '%Y-%m') AS period,
+        SUM(t.amount) AS totalSpent
+      FROM transactions t
+      JOIN categories c ON c.id = t.category_id
+      WHERE t.user_id = ?
+        AND t.kind = 'expense'
+        AND t.transaction_date >= DATE_SUB(STR_TO_DATE(CONCAT(?, '-01'), '%Y-%m-%d'), INTERVAL 3 MONTH)
+        AND t.transaction_date < DATE_ADD(STR_TO_DATE(CONCAT(?, '-01'), '%Y-%m-%d'), INTERVAL 1 MONTH)
+      GROUP BY c.id, c.name, c.color, DATE_FORMAT(t.transaction_date, '%Y-%m')
+      ORDER BY c.name, period
+    `,
+    [demoUserId, selected.monthKey, selected.monthKey]
+  );
+
   const summary = Array.isArray(summaryRows) ? (summaryRows[0] as Record<string, string | number>) : {};
   const monthlyIncome = Number(summary.monthlyIncome ?? 0);
   const monthlyExpense = Number(summary.monthlyExpense ?? 0);
@@ -195,6 +365,64 @@ app.get("/api/dashboard", async (request, response) => {
   const budgetSpent = Array.isArray(budgetRows)
     ? budgetRows.reduce((sum, row) => sum + Number((row as Record<string, string | number>).spentAmount ?? 0), 0)
     : 0;
+  const daysInMonth = getDaysInMonth(selected.year, selected.month);
+  const today = new Date();
+  const isCurrentMonth = today.getFullYear() === selected.year && today.getMonth() + 1 === selected.month;
+  const elapsedDays = isCurrentMonth ? Math.max(1, today.getDate()) : daysInMonth;
+  const remainingDays = isCurrentMonth ? Math.max(daysInMonth - today.getDate() + 1, 1) : 0;
+  const safeToSpend = remainingDays > 0 ? (totalBudget - monthlyExpense) / remainingDays : 0;
+  const fixedBudget = Array.isArray(budgetRows)
+    ? budgetRows.reduce((sum, row: any) => sum + (row.budgetMode === "fixed" ? Number(row.allocatedAmount ?? 0) : 0), 0)
+    : 0;
+  const flexibleBudget = Math.max(totalBudget - fixedBudget, 0);
+  const budgetRisk = Array.isArray(budgetRows)
+    ? budgetRows
+        .map((row: any) => {
+          const allocated = Number(row.allocatedAmount ?? 0);
+          const spent = Number(row.spentAmount ?? 0);
+          const projected = elapsedDays > 0 ? (spent / elapsedDays) * daysInMonth : spent;
+          const overrun = projected - allocated;
+          return {
+            categoryName: row.categoryName,
+            color: row.color,
+            allocatedAmount: allocated,
+            spentAmount: spent,
+            projectedSpent: projected,
+            overrun
+          };
+        })
+        .filter((row) => row.overrun > 0)
+        .sort((a, b) => b.overrun - a.overrun)
+        .slice(0, 5)
+    : [];
+
+  const categoryHistoryMap = new Map<string, Array<{ period: string; totalSpent: number; color: string }>>();
+  (Array.isArray(categoryHistoryRows) ? categoryHistoryRows : []).forEach((row: any) => {
+    const existing = categoryHistoryMap.get(row.category) ?? [];
+    existing.push({
+      period: row.period,
+      totalSpent: Number(row.totalSpent ?? 0),
+      color: row.color
+    });
+    categoryHistoryMap.set(row.category, existing);
+  });
+
+  const unusualSpendAlerts = Array.from(categoryHistoryMap.entries())
+    .map(([category, entries]) => {
+      const current = entries.find((entry) => entry.period === selected.monthKey)?.totalSpent ?? 0;
+      const previous = entries.filter((entry) => entry.period !== selected.monthKey).map((entry) => entry.totalSpent);
+      const average = previous.length > 0 ? previous.reduce((sum, value) => sum + value, 0) / previous.length : 0;
+      return {
+        category,
+        color: entries[0]?.color ?? "#0f766e",
+        currentSpent: current,
+        averageSpent: average,
+        increaseAmount: current - average
+      };
+    })
+    .filter((row) => row.currentSpent > 0 && row.averageSpent > 0 && row.currentSpent >= row.averageSpent * 1.5)
+    .sort((a, b) => b.increaseAmount - a.increaseAmount)
+    .slice(0, 5);
 
   response.json({
     selectedMonth: selected.monthKey,
@@ -206,11 +434,19 @@ app.get("/api/dashboard", async (request, response) => {
       budgetSpent,
       remainingBudget: totalBudget - monthlyExpense,
       availableToAllocate: totalBudget - budgetAllocated,
-      savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpense) / monthlyIncome) * 100 : 0
+      savingsRate: monthlyIncome > 0 ? ((monthlyIncome - monthlyExpense) / monthlyIncome) * 100 : 0,
+      safeToSpend,
+      remainingDays,
+      fixedBudget,
+      flexibleBudget
     },
     recentTransactions: recentRows,
     budgetProgress: budgetRows,
-    monthlyTrend: trendRows
+    monthlyTrend: trendRows,
+    topMerchants: merchantRows,
+    topSpendingCategories: categoryRows,
+    unusualSpendAlerts,
+    budgetRisk
   });
 });
 
@@ -226,36 +462,7 @@ app.get("/api/transactions", async (request, response) => {
     accountId: request.query.accountId,
     categoryId: request.query.categoryId
   });
-
-  const whereClauses = [
-    "t.user_id = ?",
-    "MONTH(t.transaction_date) = ?",
-    "YEAR(t.transaction_date) = ?"
-  ];
-  const whereParams: Array<string | number> = [demoUserId, selected.month, selected.year];
-
-  if (filters.q) {
-    whereClauses.push("(t.title LIKE ? OR COALESCE(t.merchant, '') LIKE ? OR COALESCE(t.notes, '') LIKE ?)");
-    const query = `%${filters.q}%`;
-    whereParams.push(query, query, query);
-  }
-
-  if (filters.kind) {
-    whereClauses.push("t.kind = ?");
-    whereParams.push(filters.kind);
-  }
-
-  if (filters.accountId) {
-    whereClauses.push("t.account_id = ?");
-    whereParams.push(filters.accountId);
-  }
-
-  if (filters.categoryId) {
-    whereClauses.push("t.category_id = ?");
-    whereParams.push(filters.categoryId);
-  }
-
-  const whereSql = whereClauses.join("\n        AND ");
+  const { whereSql, whereParams } = buildTransactionWhereClause(selected, filters);
 
   const [countRows] = await pool.query(
     `
@@ -306,6 +513,40 @@ app.get("/api/transactions", async (request, response) => {
   });
 });
 
+app.get("/api/transactions/export", async (request, response) => {
+  const selected = getSelectedMonth(request.query.month as string | undefined);
+  const filters = parseTransactionFilters({
+    q: request.query.q,
+    kind: request.query.kind,
+    accountId: request.query.accountId,
+    categoryId: request.query.categoryId
+  });
+  const { whereSql, whereParams } = buildTransactionWhereClause(selected, filters);
+
+  const [rows] = await pool.query(
+    `
+      SELECT
+        t.id,
+        t.title,
+        t.kind,
+        t.amount,
+        t.notes,
+        t.merchant,
+        DATE_FORMAT(t.transaction_date, '%Y-%m-%d') AS transactionDate,
+        a.name AS accountLabel,
+        c.name AS categoryName
+      FROM transactions t
+      JOIN accounts a ON a.id = t.account_id
+      JOIN categories c ON c.id = t.category_id
+      WHERE ${whereSql}
+      ORDER BY t.transaction_date DESC, t.id DESC
+    `,
+    whereParams
+  );
+
+  response.json(rows);
+});
+
 app.post("/api/transactions", async (request, response) => {
   const payload = transactionSchema.parse(request.body);
   const [result] = await pool.execute(
@@ -316,6 +557,7 @@ app.post("/api/transactions", async (request, response) => {
     [demoUserId, payload.accountId, payload.categoryId, payload.kind, payload.title, payload.notes ?? null, payload.merchant ?? null, payload.amount, payload.transactionDate]
   );
 
+  await logActivity("transaction", (result as { insertId: number }).insertId, "create", `Created transaction ${payload.title}`);
   response.status(201).json({ id: (result as { insertId: number }).insertId });
 });
 
@@ -330,61 +572,380 @@ app.put("/api/transactions/:id", async (request, response) => {
     [payload.accountId, payload.categoryId, payload.kind, payload.title, payload.notes ?? null, payload.merchant ?? null, payload.amount, payload.transactionDate, Number(request.params.id), demoUserId]
   );
 
+  await logActivity("transaction", Number(request.params.id), "update", `Updated transaction ${payload.title}`);
   response.json({ ok: true });
 });
 
 app.delete("/api/transactions/:id", async (request, response) => {
+  const [rows] = await pool.query("SELECT title FROM transactions WHERE id = ? AND user_id = ? LIMIT 1", [Number(request.params.id), demoUserId]);
   await pool.execute("DELETE FROM transactions WHERE id = ? AND user_id = ?", [Number(request.params.id), demoUserId]);
+  const title = Array.isArray(rows) && rows.length > 0 ? (rows[0] as any).title : `transaction ${request.params.id}`;
+  await logActivity("transaction", Number(request.params.id), "delete", `Deleted ${title}`);
   response.status(204).send();
 });
 
-app.get("/api/categories", async (_request, response) => {
+app.post("/api/transactions/bulk-delete", async (request, response) => {
+  const payload = bulkDeleteTransactionsSchema.parse(request.body);
+
+  await pool.query(
+    `
+      DELETE FROM transactions
+      WHERE user_id = ?
+        AND id IN (?)
+    `,
+    [demoUserId, payload.ids]
+  );
+
+  await logActivity("transaction", null, "bulk_delete", `Deleted ${payload.ids.length} transactions`, payload.note ?? null);
+  response.json({ ok: true, deletedCount: payload.ids.length });
+});
+
+app.post("/api/transactions/bulk-recategorize", async (request, response) => {
+  const payload = bulkRecategorizeTransactionsSchema.parse(request.body);
+
+  await pool.query(
+    `
+      UPDATE transactions
+      SET category_id = ?
+      WHERE user_id = ?
+        AND id IN (?)
+    `,
+    [payload.categoryId, demoUserId, payload.ids]
+  );
+
+  await logActivity("transaction", null, "bulk_recategorize", `Recategorized ${payload.ids.length} transactions`, payload.note ?? null);
+  response.json({ ok: true, updatedCount: payload.ids.length });
+});
+
+app.get("/api/recurring-transactions", async (_request, response) => {
+  const [rows] = await pool.query(
+    `
+      SELECT
+        r.id,
+        r.title,
+        r.kind,
+        r.amount,
+        r.notes,
+        r.merchant,
+        r.account_id AS accountId,
+        a.name AS accountLabel,
+        r.category_id AS categoryId,
+        c.name AS categoryName,
+        DATE_FORMAT(r.start_date, '%Y-%m-%d') AS startDate,
+        DATE_FORMAT(r.next_due_date, '%Y-%m-%d') AS nextDueDate,
+        r.day_of_month AS dayOfMonth,
+        r.frequency,
+        r.auto_create AS autoCreate,
+        r.is_active AS isActive,
+        MAX(DATE_FORMAT(t.transaction_date, '%Y-%m-%d')) AS lastGeneratedDate
+      FROM recurring_transactions r
+      JOIN accounts a ON a.id = r.account_id
+      JOIN categories c ON c.id = r.category_id
+      LEFT JOIN transactions t ON t.recurring_transaction_id = r.id
+      WHERE r.user_id = ?
+      GROUP BY
+        r.id,
+        r.title,
+        r.kind,
+        r.amount,
+        r.notes,
+        r.merchant,
+        r.account_id,
+        a.name,
+        r.category_id,
+        c.name,
+        r.start_date,
+        r.next_due_date,
+        r.day_of_month,
+        r.frequency,
+        r.auto_create,
+        r.is_active
+      ORDER BY r.is_active DESC, r.next_due_date ASC, r.id DESC
+    `,
+    [demoUserId]
+  );
+
+  response.json(
+    Array.isArray(rows)
+      ? rows.map((row: any) => ({
+          ...row,
+          status: getRecurringStatus(row.nextDueDate, Boolean(row.isActive))
+        }))
+      : []
+  );
+});
+
+app.post("/api/recurring-transactions/sync", async (_request, response) => {
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const result = await syncRecurringTransactions(connection, demoUserId);
+    await connection.commit();
+    response.json(result);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+});
+
+app.post("/api/recurring-transactions", async (request, response) => {
+  const payload = recurringTransactionSchema.parse(request.body);
+  const nextDueDate = getInitialNextDueDate(payload.startDate, payload.dayOfMonth);
+
+  const [result] = await pool.execute(
+    `
+      INSERT INTO recurring_transactions (
+        user_id,
+        account_id,
+        category_id,
+        kind,
+        title,
+        notes,
+        merchant,
+        amount,
+        day_of_month,
+        start_date,
+        next_due_date,
+        auto_create,
+        is_active
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `,
+    [
+      demoUserId,
+      payload.accountId,
+      payload.categoryId,
+      payload.kind,
+      payload.title,
+      payload.notes ?? null,
+      payload.merchant ?? null,
+      payload.amount,
+      payload.dayOfMonth,
+      payload.startDate,
+      nextDueDate,
+      payload.autoCreate,
+      payload.isActive
+    ]
+  );
+
+  await logActivity("recurring_transaction", (result as { insertId: number }).insertId, "create", `Created recurring transaction ${payload.title}`);
+  response.status(201).json({ id: (result as { insertId: number }).insertId });
+});
+
+app.put("/api/recurring-transactions/:id", async (request, response) => {
+  const payload = recurringTransactionSchema.parse(request.body);
+  const nextDueDate = getInitialNextDueDate(payload.startDate, payload.dayOfMonth);
+
+  await pool.execute(
+    `
+      UPDATE recurring_transactions
+      SET
+        account_id = ?,
+        category_id = ?,
+        kind = ?,
+        title = ?,
+        notes = ?,
+        merchant = ?,
+        amount = ?,
+        day_of_month = ?,
+        start_date = ?,
+        next_due_date = ?,
+        auto_create = ?,
+        is_active = ?
+      WHERE id = ? AND user_id = ?
+    `,
+    [
+      payload.accountId,
+      payload.categoryId,
+      payload.kind,
+      payload.title,
+      payload.notes ?? null,
+      payload.merchant ?? null,
+      payload.amount,
+      payload.dayOfMonth,
+      payload.startDate,
+      nextDueDate,
+      payload.autoCreate,
+      payload.isActive,
+      Number(request.params.id),
+      demoUserId
+    ]
+  );
+
+  await logActivity("recurring_transaction", Number(request.params.id), "update", `Updated recurring transaction ${payload.title}`);
+  response.json({ ok: true });
+});
+
+app.delete("/api/recurring-transactions/:id", async (request, response) => {
+  const [rows] = await pool.query("SELECT title FROM recurring_transactions WHERE id = ? AND user_id = ? LIMIT 1", [Number(request.params.id), demoUserId]);
+  await pool.execute("DELETE FROM recurring_transactions WHERE id = ? AND user_id = ?", [Number(request.params.id), demoUserId]);
+  const title = Array.isArray(rows) && rows.length > 0 ? (rows[0] as any).title : `recurring transaction ${request.params.id}`;
+  await logActivity("recurring_transaction", Number(request.params.id), "delete", `Deleted ${title}`);
+  response.status(204).send();
+});
+
+app.get("/api/categories", async (request, response) => {
+  const includeArchived = request.query.includeArchived === "1";
   const [rows] = await pool.query(`
     SELECT
-      id,
-      name,
-      type,
-      color,
-      icon,
-      is_default AS isDefault
-    FROM categories
-    WHERE user_id IS NULL OR user_id = ?
-    ORDER BY type, name
-  `, [demoUserId]);
+      c.id,
+      c.name,
+      c.type,
+      c.color,
+      c.icon,
+      c.is_default AS isDefault,
+      c.is_archived AS isArchived,
+      c.budget_mode AS budgetMode,
+      EXISTS (SELECT 1 FROM transactions t WHERE t.category_id = c.id LIMIT 1) AS hasTransactions,
+      EXISTS (SELECT 1 FROM budgets b WHERE b.category_id = c.id LIMIT 1) AS hasBudgets,
+      EXISTS (SELECT 1 FROM recurring_transactions r WHERE r.category_id = c.id LIMIT 1) AS hasRecurring
+    FROM categories c
+    WHERE (c.user_id IS NULL OR c.user_id = ?)
+      AND (? = TRUE OR c.is_archived = FALSE)
+    ORDER BY c.type, c.name
+  `, [demoUserId, includeArchived]);
 
   response.json(rows);
 });
 
 app.post("/api/categories", async (request, response) => {
   const payload = categorySchema.parse(request.body);
+  await ensureCategoryUnique(payload.name, payload.type);
   const [result] = await pool.execute(
     `
-      INSERT INTO categories (user_id, name, type, color, icon, is_default)
-      VALUES (?, ?, ?, ?, ?, FALSE)
+      INSERT INTO categories (user_id, name, type, color, icon, is_default, budget_mode)
+      VALUES (?, ?, ?, ?, ?, FALSE, ?)
     `,
-    [demoUserId, payload.name, payload.type, payload.color, payload.icon]
+    [demoUserId, payload.name, payload.type, payload.color, payload.icon, payload.budgetMode]
   );
 
+  await logActivity("category", (result as { insertId: number }).insertId, "create", `Created category ${payload.name}`, payload.changeNote ?? null);
   response.status(201).json({ id: (result as { insertId: number }).insertId });
 });
 
 app.put("/api/categories/:id", async (request, response) => {
   const payload = categorySchema.parse(request.body);
+  await ensureCategoryUnique(payload.name, payload.type, Number(request.params.id));
   await pool.execute(
     `
       UPDATE categories
-      SET name = ?, type = ?, color = ?, icon = ?
+      SET name = ?, type = ?, color = ?, icon = ?, budget_mode = ?
       WHERE id = ? AND user_id = ?
     `,
-    [payload.name, payload.type, payload.color, payload.icon, Number(request.params.id), demoUserId]
+    [payload.name, payload.type, payload.color, payload.icon, payload.budgetMode, Number(request.params.id), demoUserId]
   );
 
+  await logActivity("category", Number(request.params.id), "update", `Updated category ${payload.name}`, payload.changeNote ?? null);
   response.json({ ok: true });
 });
 
 app.delete("/api/categories/:id", async (request, response) => {
-  await pool.execute("DELETE FROM categories WHERE id = ? AND user_id = ?", [Number(request.params.id), demoUserId]);
+  const payload = deleteCategorySchema.parse(request.body ?? {});
+  const categoryId = Number(request.params.id);
+
+  const [rows] = await pool.query(
+    `
+      SELECT name, type
+      FROM categories
+      WHERE id = ? AND user_id = ?
+      LIMIT 1
+    `,
+    [categoryId, demoUserId]
+  );
+
+  const category = Array.isArray(rows) && rows.length > 0 ? rows[0] as any : null;
+  if (!category) {
+    response.status(404).json({ message: "Category not found." });
+    return;
+  }
+
+  const [usageRows] = await pool.query(
+    `
+      SELECT
+        (SELECT COUNT(*) FROM transactions WHERE category_id = ?) AS transactionCount,
+        (SELECT COUNT(*) FROM budgets WHERE category_id = ?) AS budgetCount,
+        (SELECT COUNT(*) FROM recurring_transactions WHERE category_id = ?) AS recurringCount
+    `,
+    [categoryId, categoryId, categoryId]
+  );
+
+  const usage = Array.isArray(usageRows) && usageRows.length > 0 ? usageRows[0] as any : { transactionCount: 0, budgetCount: 0, recurringCount: 0 };
+  const hasUsage = Number(usage.transactionCount) > 0 || Number(usage.budgetCount) > 0 || Number(usage.recurringCount) > 0;
+
+  if (hasUsage && !payload.reassignmentCategoryId) {
+    response.status(400).json({ message: "This category is already in use. Reassign it before deleting." });
+    return;
+  }
+
+  if (payload.reassignmentCategoryId) {
+    const [targetRows] = await pool.query(
+      `
+        SELECT id
+        FROM categories
+        WHERE id = ?
+          AND type = ?
+          AND is_archived = FALSE
+          AND (user_id IS NULL OR user_id = ?)
+        LIMIT 1
+      `,
+      [payload.reassignmentCategoryId, category.type, demoUserId]
+    );
+
+    if (!Array.isArray(targetRows) || targetRows.length === 0) {
+      response.status(400).json({ message: "Select a valid replacement category with the same type." });
+      return;
+    }
+
+    await pool.execute("UPDATE transactions SET category_id = ? WHERE category_id = ?", [payload.reassignmentCategoryId, categoryId]);
+    await pool.execute("UPDATE budgets SET category_id = ? WHERE category_id = ?", [payload.reassignmentCategoryId, categoryId]);
+    await pool.execute("UPDATE recurring_transactions SET category_id = ? WHERE category_id = ?", [payload.reassignmentCategoryId, categoryId]);
+  }
+
+  await pool.execute("DELETE FROM categories WHERE id = ? AND user_id = ?", [categoryId, demoUserId]);
+  await logActivity("category", categoryId, "delete", `Deleted category ${category.name}`, payload.changeNote ?? null);
   response.status(204).send();
+});
+
+app.put("/api/categories/:id/archive", async (request, response) => {
+  const payload = archiveCategorySchema.parse(request.body);
+  const categoryId = Number(request.params.id);
+
+  await pool.execute(
+    `
+      UPDATE categories
+      SET is_archived = ?
+      WHERE id = ? AND user_id = ?
+    `,
+    [payload.isArchived, categoryId, demoUserId]
+  );
+
+  await logActivity("category", categoryId, payload.isArchived ? "archive" : "restore", `${payload.isArchived ? "Archived" : "Restored"} category ${categoryId}`, payload.changeNote ?? null);
+  response.json({ ok: true });
+});
+
+app.get("/api/activity", async (_request, response) => {
+  const [rows] = await pool.query(
+    `
+      SELECT
+        id,
+        entity_type AS entityType,
+        entity_id AS entityId,
+        action,
+        title,
+        note,
+        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') AS createdAt
+      FROM activity_logs
+      WHERE user_id = ?
+      ORDER BY created_at DESC, id DESC
+      LIMIT 20
+    `,
+    [demoUserId]
+  );
+
+  response.json(rows);
 });
 
 app.get("/api/accounts", async (_request, response) => {
@@ -460,6 +1021,7 @@ app.get("/api/budgets", async (request, response) => {
         b.category_id AS categoryId,
         c.name AS categoryName,
         c.color,
+        c.budget_mode AS budgetMode,
         b.allocated_amount AS allocatedAmount,
         COALESCE(SUM(t.amount), 0) AS spentAmount
       FROM budgets b
@@ -473,7 +1035,7 @@ app.get("/api/budgets", async (request, response) => {
       WHERE b.user_id = ?
         AND b.month = ?
         AND b.year = ?
-      GROUP BY b.id, b.month, b.year, b.category_id, c.name, c.color, b.allocated_amount
+      GROUP BY b.id, b.month, b.year, b.category_id, c.name, c.color, c.budget_mode, b.allocated_amount
       ORDER BY c.name
     `,
     [demoUserId, selected.month, selected.year]
