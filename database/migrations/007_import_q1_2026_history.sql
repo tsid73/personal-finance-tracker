@@ -1,6 +1,61 @@
 SET @demo_user_id := 1;
 
 INSERT INTO categories (user_id, name, type, color, icon, is_default, is_archived, budget_mode)
+SELECT @demo_user_id, 'Credit Card', 'expense', '#22ec13', 'tag', FALSE, FALSE, 'flexible'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM categories
+  WHERE user_id = @demo_user_id
+    AND LOWER(name) = LOWER('Credit Card')
+    AND type = 'expense'
+  LIMIT 1
+);
+
+INSERT INTO categories (user_id, name, type, color, icon, is_default, is_archived, budget_mode)
+SELECT @demo_user_id, 'EMI', 'expense', '#ed0c45', 'EMI', FALSE, FALSE, 'flexible'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM categories
+  WHERE user_id = @demo_user_id
+    AND LOWER(name) = LOWER('EMI')
+    AND type = 'expense'
+  LIMIT 1
+);
+
+INSERT INTO categories (user_id, name, type, color, icon, is_default, is_archived, budget_mode)
+SELECT @demo_user_id, 'Misc', 'expense', '#0f766e', 'tag', FALSE, FALSE, 'flexible'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM categories
+  WHERE user_id = @demo_user_id
+    AND LOWER(name) = LOWER('Misc')
+    AND type = 'expense'
+  LIMIT 1
+);
+
+INSERT INTO categories (user_id, name, type, color, icon, is_default, is_archived, budget_mode)
+SELECT @demo_user_id, 'Food', 'expense', '#0f766e', 'tag', FALSE, FALSE, 'flexible'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM categories
+  WHERE user_id = @demo_user_id
+    AND LOWER(name) = LOWER('Food')
+    AND type = 'expense'
+  LIMIT 1
+);
+
+INSERT INTO categories (user_id, name, type, color, icon, is_default, is_archived, budget_mode)
+SELECT @demo_user_id, 'Investment', 'expense', '#0f766e', 'tag', FALSE, FALSE, 'flexible'
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM categories
+  WHERE user_id = @demo_user_id
+    AND LOWER(name) = LOWER('Investment')
+    AND type = 'expense'
+  LIMIT 1
+);
+
+INSERT INTO categories (user_id, name, type, color, icon, is_default, is_archived, budget_mode)
 SELECT @demo_user_id, 'Hotel', 'expense', '#7c2d12', 'bed', FALSE, FALSE, 'flexible'
 WHERE NOT EXISTS (
   SELECT 1
