@@ -2,6 +2,16 @@
 
 Personal Finance Tracker is a local-first finance app for one user. It manages transactions, recurring schedules, budgets, categories, reports, and month-aware dashboard insights on top of a MySQL database that persists locally between runs.
 
+## Security Model
+
+This app is intentionally local-first and designed for one user.
+
+It does not include authentication. Run it on `localhost` or a trusted private network only. Do not expose it directly to the public internet unless you add authentication, authorization, CSRF protection, rate limiting, and deployment hardening.
+
+Anyone who can access the running app can view, create, edit, delete, export, and modify finance data.
+
+The optional Tailscale access flow is intended for trusted tailnet-only access. Any device or user that can reach the exposed Tailscale URL should be considered trusted.
+
 ## Current Product Behavior
 
 - A shared selected-month control in the shell drives dashboard, transactions, budgets, reports, and monthly drill-downs together.
@@ -366,6 +376,6 @@ That persistence works because the Docker stop flow keeps the named MySQL volume
 ## Notes For Future Work
 
 - Barcode scanning is still deferred.
-- Authentication is not implemented yet.
+- Authentication is not included by design. Use only on localhost or a trusted private network unless you add auth and hardening.
 - Good next additions are savings goals, CSV import, attachments, and account management UI.
 - `.private/Plan.md` should be updated before and after future feature work.
