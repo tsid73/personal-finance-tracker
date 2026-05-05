@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Personal Finance Tracker">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#111827" />
+      <stop offset="1" stop-color="#0f766e" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)" />
+  <path d="M17 24.5c0-3.6 2.9-6.5 6.5-6.5H45c2.2 0 4 1.8 4 4v24c0 2.2-1.8 4-4 4H21c-2.2 0-4-1.8-4-4V24.5Z" fill="#f8fafc" />
+  <path d="M17 26h27c2.8 0 5 2.2 5 5v4H17v-9Z" fill="#99f6e4" />
+  <path d="M24 44 31 37l5 5 9-12" fill="none" stroke="#0f172a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="43" cy="26" r="5" fill="#f59e0b" />
+</svg>

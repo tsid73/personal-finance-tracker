@@ -5,6 +5,8 @@ apps/web/src/**/*.js
 apps/web/src/**/*.test.js
 dist
 .env
+.idea/
+.vscode/
 .DS_Store
 coverage
 *.log
@@ -14,3 +16,15 @@ backups/
 *.sql.gz
 Plan.md
 .private/
+*.hprof
+local.properties
+**/build/
+apps/android/.gradle/
+apps/android/.idea/
+apps/android/keystore.properties
+apps/android/*.jks
+apps/android/*.keystore
+apps/android/app/release/
+*.apk
+*.aab
+!releases/android/*.apk
