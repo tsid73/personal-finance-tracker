@@ -1,218 +1,204 @@
 # Personal Finance Tracker
 
-Personal Finance Tracker is a local-first finance app for one user. It manages transactions, recurring schedules, budgets, categories, reports, and month-aware dashboard insights on top of a MySQL database that persists locally between runs.
+Personal Finance Tracker is a multi-client personal finance project with:
 
-## Current Product Behavior
+- a web app in `apps/web`
+- a REST API in `apps/api`
+- a native Android app in `apps/android`
 
-- A shared selected-month control in the shell drives dashboard, transactions, budgets, reports, and monthly drill-downs together.
-- The selected month is preserved while navigating between pages.
-- A floating quick-add transaction button is available on every page.
-- A built-in theme toggle switches between light and dark modes and persists locally.
-- Data is stored in MySQL and persists across app stop/start cycles.
-- Stopping the app shuts down the frontend, API, and Docker services without deleting the database volume.
-- The app now includes a dedicated recurring-transactions page instead of mixing recurring management into the transactions page.
+The web stack is API-backed with MySQL. The Android app is local-first with Room/SQLite and optional push-only sync to the existing backend.
+
+## Product Scope
+
+Current finance domains:
+
+- transactions
+- recurring schedules
+- monthly budgets
+- monthly budget targets
+- categories
+- activity history
+- dashboard summaries
+- monthly reports
+
+## Repository Layout
+
+```text
+personal-finance-tracker/
+|-- apps/
+|   |-- api/                  Node.js + Express API
+|   |-- web/                  React web application
+|   `-- android/              Kotlin + Compose Android application
+|-- database/
+|   |-- migrations/           MySQL schema and seed history
+|   `-- schema.sql            Schema snapshot
+|-- packages/
+|   `-- shared/               Shared TypeScript types
+|-- scripts/                  Local startup, stop, backup, restore, tailscale helpers
+|-- docker-compose.yml        MySQL local infrastructure
+`-- README.md
+```
+
+## Current App State
+
+### Web
+
+- month-aware dashboard
+- full transaction CRUD
+- search, filter, pagination, bulk delete, bulk recategorize
+- recurring schedule management
+- budget target and category budgets
+- category archive, restore, replacement-based delete
+- reports and CSV export
+
+### Android
+
+- local-first persistence with Room and DataStore
+- dashboard, transactions, recurring, budgets, categories, reports
+- add/edit/delete flows for all core entities
+- shared app-wide month control across dashboard, transactions, budgets, and reports
+- compact transaction filters with search and advanced filters
+- bulk delete and bulk recategorize for transactions
+- copy budgets to next month without copying usage
+- copy recurring schedules to next month with duplicate protection
+- JSON backup export
+- CSV transaction export
+- CSV report export, including monthly breakdown and category drill-down transactions
+- optional push-only sync to the existing API
+- dark/light theme toggle
+- native Android date pickers for transaction and recurring editors, with quick date actions
+- budget-vs-actual reporting, trailing multi-month comparison, and report drill-down views
+- animated month transitions, animated list placement, and animated shell navigation
+- unsaved-change protection on full-screen transaction and recurring editors
 
 ## Tech Stack
 
-### Frontend
+### Web
 
 - React
 - TypeScript
 - Vite
 - Tailwind CSS
-- React Router
 - TanStack Query
+- React Router
 - Recharts
-- Axios
 
-### Backend
+### API
 
 - Node.js
 - Express
 - TypeScript
 - Zod
 - mysql2
-- dotenv
 
-### Data and local infrastructure
+### Android
 
-- MySQL 8
-- Docker Compose
+- Kotlin
+- Jetpack Compose
+- Material 3
+- Room
+- DataStore
+- ViewModel
+- Coroutines
+- OkHttp
 
-### Shared code
+### Data
 
-- `packages/shared` for shared TypeScript types
-
-## Project Structure
-
-```text
-personal-finance-tracker/
-+-- apps/
-|   +-- api/
-|   |   +-- src/config.ts
-|   |   +-- src/db.ts
-|   |   +-- src/server.ts
-|   +-- web/
-|       +-- src/main.tsx
-|       +-- src/shell/AppShell.tsx
-|       +-- src/shell/month.ts
-|       +-- src/shell/useAppShellContext.ts
-|       +-- src/pages/
-|       +-- src/components/
-|       +-- src/lib/
-+-- packages/
-|   +-- shared/src/index.ts
-+-- database/
-|   +-- schema.sql
-|   +-- seed-summary.mjs
-+-- scripts/
-|   +-- start-dev.sh
-|   +-- stop-dev.sh
-+-- README.md
-+-- docker-compose.yml
-+-- package.json
-+-- tsconfig.base.json
-```
+- MySQL 8 for web and API
+- SQLite for Android
 
 ## Architecture
 
-This project uses a monorepo-style workspace.
+### System Diagram
 
-- `apps/web` contains the React application and page-level UI.
-- `apps/api` contains the Express server and MySQL-backed REST endpoints.
-- `packages/shared` contains shared domain types.
-- `database/migrations` contains the schema and demo seed migrations. `database/schema.sql` remains as a schema reference snapshot.
-- `docker-compose.yml` starts the local MySQL instance.
-- `.private/Plan.md` is the private rebuild and planning file kept out of git.
+```mermaid
+flowchart LR
+    Web["Web App<br/>React + Vite"] --> Api["API<br/>Express + Zod"]
+    Api --> Mysql["MySQL<br/>Docker"]
+    Shared["Shared TS Types"] --> Web
+    Shared --> Api
+    Android["Android App<br/>Compose + Room"] --> Sqlite["SQLite<br/>Room"]
+    Android -. optional push sync .-> Api
+```
 
-## How It Works
+### Android Layer Diagram
 
-1. The frontend loads through Vite and renders a shared shell with month navigation.
-2. The selected month is stored in the URL query string and reused across pages.
-3. The frontend calls the backend using relative `/api` requests through the Vite proxy in development.
-4. The backend validates write payloads with Zod and queries MySQL using `mysql2/promise`.
-5. Dashboard and reports use aggregated month-aware SQL queries.
-6. Transactions are paginated and filterable to keep the page responsive as data grows.
-7. Recurring schedules can auto-create due transactions through the API.
-8. TanStack Query manages cache invalidation after create, edit, delete, archive, bulk actions, and undo operations.
+```mermaid
+flowchart TD
+    UI["Compose Screens"] --> VM["ViewModels"]
+    VM --> Repo["FinanceRepository"]
+    Repo --> Room["Room DAOs"]
+    Repo --> Prefs["DataStore Preferences"]
+    Room --> DB["SQLite Database"]
+    Repo -. optional .-> Sync["RemoteSyncManager"]
+    Sync --> Api["REST API"]
+```
 
-## Current Features
+### UML Style Component View
 
-### Shared month control
+```mermaid
+classDiagram
+    class DashboardScreen
+    class TransactionsScreen
+    class BudgetsScreen
+    class RecurringScreen
+    class CategoriesScreen
+    class ReportsScreen
 
-- Previous month, current month, next month buttons
-- Month picker input
-- Same selected month reused across dashboard, transactions, recurring, budgets, and reports
+    class DashboardViewModel
+    class TransactionsViewModel
+    class BudgetsViewModel
+    class RecurringViewModel
+    class CategoriesViewModel
+    class ReportsViewModel
 
-### Dashboard
+    class FinanceRepository
+    class AppDatabase
+    class PreferenceManager
+    class RemoteSyncManager
 
-- Income summary for selected month
-- Expense summary for selected month
-- Monthly total budget summary
-- Budget allocated summary
-- Remaining budget summary
-- Daily safe-to-spend summary
-- Remaining-days summary
-- Fixed-budget summary
-- Flexible-budget summary
-- Income vs expense trend chart
-- Recent transactions
-- Budget status overview
-- Top merchants
-- Top spending categories
-- Unusual spend alerts
-- Budget risk panel for categories projected to overshoot
+    DashboardScreen --> DashboardViewModel
+    TransactionsScreen --> TransactionsViewModel
+    BudgetsScreen --> BudgetsViewModel
+    RecurringScreen --> RecurringViewModel
+    CategoriesScreen --> CategoriesViewModel
+    ReportsScreen --> ReportsViewModel
 
-### Transactions
+    DashboardViewModel --> FinanceRepository
+    TransactionsViewModel --> FinanceRepository
+    BudgetsViewModel --> FinanceRepository
+    RecurringViewModel --> FinanceRepository
+    CategoriesViewModel --> FinanceRepository
+    ReportsViewModel --> FinanceRepository
 
-- Add, edit, delete transactions
-- Undo delete for the most recent transaction removal
-- Undo for the most recent bulk delete
-- Delete confirmation before destructive actions
-- Paginated transaction list
-- Search and filters for title, merchant, notes, type, account, and category
-- Export filtered transactions to CSV
-- Bulk delete
-- Bulk recategorize
-- Sticky filter panel
-- SweetAlert delete confirmation and undo restore flow
-- Floating quick-add button visible on every page
-- Account selection includes `Bank`, `Cash`, `Credit Card`, `UPI`, `UPI-Lite`, and `NEFT`
-- Validation for title, amount, account, category, and month-aligned date
-- Mobile card layout and desktop table layout
-- Mobile cards use direct icon actions instead of overflow menus
+    FinanceRepository --> AppDatabase
+    FinanceRepository --> PreferenceManager
+    FinanceRepository --> RemoteSyncManager
+```
 
-### Recurring
+### Entity Relationship Diagram
 
-- Dedicated recurring page in the main navigation
-- Add, edit, delete recurring schedules
-- Turn recurring schedules on and off
-- Manual `Create due now` action
-- Auto-sync due schedules through the API
-- Recurring form is collapsible
-- Schedule list shows due, upcoming, and inactive state
-- Start date, next due date, and last generated transaction date are shown per schedule
+```mermaid
+erDiagram
+    USERS ||--o{ ACCOUNTS : owns
+    USERS ||--o{ TRANSACTIONS : records
+    USERS ||--o{ CATEGORIES : creates
+    USERS ||--o{ RECURRING_TRANSACTIONS : schedules
+    USERS ||--o{ BUDGETS : allocates
+    USERS ||--o{ MONTHLY_BUDGET_TARGETS : sets
+    USERS ||--o{ ACTIVITY_LOGS : produces
 
-### Budgets
+    ACCOUNTS ||--o{ TRANSACTIONS : used_by
+    ACCOUNTS ||--o{ RECURRING_TRANSACTIONS : used_by
 
-- Monthly total budget target
-- Category-level monthly allocations
-- Add, edit, delete category budgets
-- Remaining-to-allocate summary
-- Spent vs allocated visualization
-- Fixed vs flexible category budget modes are shown
-- Direct icon actions instead of overflow menus
+    CATEGORIES ||--o{ TRANSACTIONS : classifies
+    CATEGORIES ||--o{ RECURRING_TRANSACTIONS : classifies
+    CATEGORIES ||--o{ BUDGETS : budgeted_as
+```
 
-### Categories
+## Core Data Model
 
-- Seeded default categories
-- Add, edit, archive, restore, and delete custom categories
-- Type, color, icon picker, and budget mode fields
-- Input validation and user-facing errors
-- Duplicate category names are blocked per type
-- Delete is prevented for categories in use unless a same-type replacement category is chosen
-- Replacement selection only appears when delete is initiated on an in-use category
-- Renaming an in-use category warns that existing records will be affected
-- Category activity history is shown in the UI
-
-### Reports
-
-- Expense distribution for selected month
-- Category totals for selected month
-- Multi-month comparison ending at the selected month
-- Category totals include allocated, spent, and remaining for monthly reports
-- Clicking a monthly category total drills into filtered transactions for that category and month
-- Monthly category CSV export includes budget, spent, and remaining
-
-### Error handling
-
-- Route-level error boundary
-- Page-level loading states with lightweight skeleton placeholders
-- Page-level error states
-- Backend validation error responses
-- Recent activity panels for category, transaction, and recurring changes
-
-## Entry Points
-
-### Frontend
-
-- `apps/web/src/main.tsx`
-- `apps/web/src/shell/AppShell.tsx`
-
-### Backend
-
-- `apps/api/src/server.ts`
-- `apps/api/src/config.ts`
-- `apps/api/src/db.ts`
-
-### Database
-
-- `database/migrations`
-- `database/schema.sql`
-
-## Database Notes
-
-The schema includes these main tables:
+Main persisted entities:
 
 - `users`
 - `accounts`
@@ -223,102 +209,74 @@ The schema includes these main tables:
 - `monthly_budget_targets`
 - `activity_logs`
 
-Indexes are included for common user/month/date query patterns to keep reporting and month-filtered reads responsive.
+The Android app persists equivalent structures in Room. Budget usage is derived from transactions and is not copied when copying budget baselines across months.
 
-## Installation
+## Feature Notes
+
+### Shared month model
+
+- web keeps the selected month in app state and URL-driven navigation
+- Android keeps the selected month in DataStore
+- dashboard, transactions, budgets, and reports read from the same selected month
+
+### Android persistence model
+
+- primary storage is local Room/SQLite
+- sync is optional and manual
+- current sync mode pushes local data to the API
+- Android remains usable without the backend
+
+### Current limitations
+
+- no authentication
+- Android sync is not full bidirectional sync
+- no conflict resolution across web and Android
+- no encrypted local database yet
+- no cloud backup flow yet
+
+## Local Development
 
 ### Prerequisites
 
-- Node.js 20 or newer
-- npm 10 or newer
-- Docker with Compose support
-- WSL Ubuntu if you are using the same workspace layout
+- Node.js 20+
+- npm 10+
+- Docker with Compose
+- Android Studio for Android work
+- Java 17
 
-### Initial Setup
-
-1. Open the project root.
-2. Copy `.env.example` to `.env` if `.env` does not already exist.
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the app:
-   ```bash
-   bash scripts/start-dev.sh
-   ```
-
-## Startup and Stop
-
-### Start
-
-Use either command:
+### Web and API startup
 
 ```bash
+npm install
 bash scripts/start-dev.sh
 ```
 
-or
-
-```bash
-npm run start:app
-```
-
-The startup script will:
-
-- create `.env` from `.env.example` if needed
-- install dependencies if `node_modules` is missing
-- start MySQL through Docker Compose
-- wait for MySQL to become reachable
-- run database migrations
-- build shared and API packages
-- start the API on port `4000`
-- start the frontend on port `5173`
-- try to open the frontend in the browser
-- write logs and pid files to `logs/`
-
-### Stop
-
-Use either command:
+Stop everything:
 
 ```bash
 bash scripts/stop-dev.sh
 ```
 
-or
+### Android startup
 
-```bash
-npm run stop:app
-```
+Open `apps/android` in Android Studio and run the app on:
 
-The stop script will:
+- an emulator, or
+- a spare Android device
 
-- stop the API process
-- stop the frontend process
-- kill listeners on ports `4000` and `5173` if needed
-- shut down Docker services for this project
-- keep the MySQL volume intact so your data remains on the next start
+## Android Release Artifact
 
-## Optional Tailscale Access
+The committed Android release artifact lives in:
 
-The repo includes a tailnet-only remote access layer for phone usage without rebinding the app itself to the network.
+- `releases/android/personal-finance-tracker-android-release.apk`
 
-Start it with:
+Local Android build outputs under `apps/android/app/build/` remain ignored so development artifacts are not pushed accidentally. Only curated release files copied into `releases/android/` are tracked.
 
-```bash
-npm run start:tailscale
-```
-
-Stop it with:
-
-```bash
-npm run stop:tailscale
-```
-
-This keeps the main app on `127.0.0.1` and exposes only a separate proxy bound to the machine's Tailscale IP.
+For development, prefer the emulator. Many banking and security-sensitive apps react to developer mode, USB debugging, or sideloaded debug builds on a primary phone.
 
 ## Testing
 
-Run the automated checks:
+### Web and API
 
 ```bash
 npm test
@@ -326,18 +284,52 @@ npm run lint
 npm run build
 ```
 
-## Persistence
+### Android
 
-Transactions, recurring schedules, budgets, categories, activity history, and monthly budget data remain available after stopping and starting the app again.
+From `apps/android`:
 
-That persistence works because the Docker stop flow keeps the named MySQL volume instead of deleting it.
+```bash
+./gradlew :app:assembleDebug
+./gradlew :app:testDebugUnitTest
+./gradlew :app:assembleRelease
+```
+
+## Release Build
+
+The Android app supports property-based release signing.
+
+1. Copy `apps/android/keystore.properties.example` to `apps/android/keystore.properties`
+2. Create or place your release keystore in `apps/android/`
+3. Fill in:
+   - `storeFile`
+   - `storePassword`
+   - `keyAlias`
+   - `keyPassword`
+4. Build:
+
+```bash
+cd apps/android
+./gradlew :app:assembleRelease
+```
+
+Generated APK:
+
+- signed release: `apps/android/app/build/outputs/apk/release/app-release.apk`
+- unsigned release when no keystore is configured: `apps/android/app/build/outputs/apk/release/app-release-unsigned.apk`
+
+Do not commit:
+
+- `apps/android/keystore.properties`
+- any `.jks` or `.keystore` file
+
+Back up the release keystore outside the repo. Losing it blocks future updates to the installed app.
 
 ## API Surface
 
 - `GET /api/health`
 - `GET /api/dashboard?month=YYYY-MM`
-- `GET /api/transactions?month=YYYY-MM&page=1&perPage=10&q=&kind=&accountId=&categoryId=`
-- `GET /api/transactions/export?month=YYYY-MM&q=&kind=&accountId=&categoryId=`
+- `GET /api/transactions`
+- `GET /api/transactions/export`
 - `POST /api/transactions`
 - `PUT /api/transactions/:id`
 - `DELETE /api/transactions/:id`
@@ -354,18 +346,33 @@ That persistence works because the Docker stop flow keeps the named MySQL volume
 - `DELETE /api/categories/:id`
 - `PUT /api/categories/:id/archive`
 - `GET /api/accounts`
-- `GET /api/monthly-budget?month=YYYY-MM`
+- `GET /api/monthly-budget`
 - `PUT /api/monthly-budget`
-- `GET /api/budgets?month=YYYY-MM`
+- `GET /api/budgets`
 - `POST /api/budgets`
 - `PUT /api/budgets/:id`
 - `DELETE /api/budgets/:id`
-- `GET /api/reports/overview?month=YYYY-MM`
+- `GET /api/reports/overview`
 - `GET /api/activity`
 
-## Notes For Future Work
+## Before Pushing To GitHub
 
-- Barcode scanning is still deferred.
-- Authentication is not implemented yet.
-- Good next additions are savings goals, CSV import, attachments, and account management UI.
-- `.private/Plan.md` should be updated before and after future feature work.
+Verify these are not committed:
+
+- `.env`
+- IDE folders like `.idea/`
+- Android local files like `local.properties`
+- release keystores and signing properties
+- build outputs and generated APKs
+- database dumps and backup archives
+
+## Missing But Worth Adding
+
+For long-term use, the next useful additions are:
+
+- encrypted local storage or at least sensitive-data threat notes
+- proper Android import and restore flow, not just export
+- full sync strategy with conflict handling
+- versioned Android Room migrations instead of destructive fallback only
+- screenshots for web and Android in the README
+- GitHub Actions for test and build verification

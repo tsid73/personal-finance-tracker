@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <!-- Panel -->
+    <path
+        android:pathData="M132 193c0-33.1 26.9-60 60-60h171c20.4 0 37 16.6 37 37v179c0 20.4-16.6 37-37 37H169c-20.4 0-37-16.6-37-37V193Z">
+        <aapt:attr name="android:fillColor" xmlns:aapt="http://schemas.android.com/aapt">
+            <gradient
+                android:endX="384"
+                android:endY="400"
+                android:startX="142"
+                android:startY="114"
+                android:type="linear">
+                <item
+                    android:color="#ffffff"
+                    android:offset="0" />
+                <item
+                    android:color="#dffaf4"
+                    android:offset="1" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <!-- Teal top on panel -->
+    <path
+        android:fillColor="#99f6e4"
+        android:pathData="M132 205h215c29.3 0 53 23.7 53 53v35H132v-88Z" />
+    <!-- Chart line -->
+    <path
+        android:pathData="M193 342 246 289l39 39 72-96"
+        android:strokeWidth="30"
+        android:strokeColor="#0f172a"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <!-- Sun/Coin -->
+    <path
+        android:fillColor="#f59e0b"
+        android:pathData="M 359, 200 m -43, 0 a 43,43 0 1,0 86,0 a 43,43 0 1,0 -86,0" />
+    <!-- Inner part of sun/coin -->
+    <path
+        android:fillColor="#fffbeb"
+        android:pathData="M 359, 200 m -20, 0 a 20,20 0 1,0 40,0 a 20,20 0 1,0 -40,0"
+        android:fillAlpha="0.9" />
+</vector>
