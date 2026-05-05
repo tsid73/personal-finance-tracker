@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.animateItemPlacement
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -202,7 +201,6 @@ fun TransactionsScreen(viewModel: TransactionsViewModel) {
                     val category = categories.find { it.id == transaction.categoryId }
                     val account = accounts.find { it.id == transaction.accountId }
                     TransactionItem(
-                        modifier = Modifier.animateItemPlacement(),
                         transaction = transaction,
                         categoryName = category?.name ?: "Unknown",
                         accountName = account?.name ?: "Unknown",
@@ -374,7 +372,6 @@ private fun FilterDropdown(
 
 @Composable
 private fun TransactionItem(
-    modifier: Modifier = Modifier,
     transaction: TransactionEntity,
     categoryName: String,
     accountName: String,
@@ -384,7 +381,7 @@ private fun TransactionItem(
     onDelete: () -> Unit
 ) {
     Card(
-        modifier = modifier.fillMaxWidth().clickable { onToggleSelect() },
+        modifier = Modifier.fillMaxWidth().clickable { onToggleSelect() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface

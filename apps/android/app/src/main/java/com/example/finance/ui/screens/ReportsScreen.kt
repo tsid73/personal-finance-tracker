@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.animateItemPlacement
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -25,7 +24,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -140,14 +139,14 @@ fun ReportsScreen(viewModel: ReportsViewModel) {
                     }
                 } else {
                     items(budgetVsActual, key = { "${it.categoryId}-${it.categoryName}" }) { row ->
-                        BudgetActualCard(modifier = Modifier.animateItemPlacement(), row = row, onClick = {
+                        BudgetActualCard(row = row, onClick = {
                             categoryDetailKey = selectedMonth to row.categoryId
                         })
                     }
                 }
             } else {
                 items(comparison, key = { it.monthKey }) { row ->
-                    ComparisonCard(modifier = Modifier.animateItemPlacement(), row = row, onClick = {
+                    ComparisonCard(row = row, onClick = {
                         monthDetail = row.monthKey
                     })
                 }
@@ -217,12 +216,11 @@ private fun ScopeButton(
 
 @Composable
 private fun BudgetActualCard(
-    modifier: Modifier = Modifier,
     row: BudgetActualRow,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
@@ -251,12 +249,11 @@ private fun BudgetActualCard(
 
 @Composable
 private fun ComparisonCard(
-    modifier: Modifier = Modifier,
     row: ComparisonRow,
     onClick: () -> Unit
 ) {
     Card(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
@@ -377,7 +374,7 @@ private fun CategoryDetailDialog(
                 ReportAmountRow("Budget", detail.allocatedAmount)
                 ReportAmountRow("Spent", detail.spentAmount)
                 ReportAmountRow("Remaining", detail.remainingAmount, emphasizeNegative = true)
-                HorizontalDivider()
+                Divider()
                 if (detail.transactions.isEmpty()) {
                     Text("No expense transactions for this category in this month.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 } else {
