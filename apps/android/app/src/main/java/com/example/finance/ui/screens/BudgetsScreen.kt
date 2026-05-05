@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.animateItemPlacement
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -143,7 +142,6 @@ fun BudgetsScreen(viewModel: BudgetsViewModel) {
                 items(budgets, key = { it.id }) { budget ->
                     val category = categories.find { it.id == budget.categoryId }
                     BudgetItem(
-                        modifier = Modifier.animateItemPlacement(),
                         budget = budget,
                         category = category,
                         spentAmount = spendingByCategory[budget.categoryId] ?: 0L,
@@ -218,7 +216,6 @@ fun BudgetsScreen(viewModel: BudgetsViewModel) {
 
 @Composable
 private fun BudgetItem(
-    modifier: Modifier = Modifier,
     budget: BudgetEntity,
     category: CategoryEntity?,
     spentAmount: Long,
@@ -226,7 +223,7 @@ private fun BudgetItem(
     onDelete: () -> Unit
 ) {
     val remaining = budget.allocatedAmount - spentAmount
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,

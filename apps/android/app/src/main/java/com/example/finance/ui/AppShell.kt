@@ -11,9 +11,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.LightMode
@@ -35,6 +35,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -229,7 +230,7 @@ private fun ShellMonthBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onPrev) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous month")
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Previous month")
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TextButton(onClick = onCurrent) {
@@ -247,7 +248,7 @@ private fun ShellMonthBar(
                     )
                 }
                 IconButton(onClick = onNext) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next month")
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Next month")
                 }
             }
         }
@@ -272,11 +273,11 @@ private fun MonthPickerDialog(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { year -= 1 }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Previous year")
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "Previous year")
                     }
                     Text(year.toString(), fontWeight = FontWeight.Bold)
                     IconButton(onClick = { year += 1 }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Next year")
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Next year")
                     }
                 }
                 months.chunked(4).forEach { rowMonths ->
