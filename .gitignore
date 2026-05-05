@@ -19,6 +19,8 @@ logs/
 *.tsbuildinfo
 backups/
 *.sql.gz
+database/migrations/*_history.sql
+database/migrations/*_live_data.sql
 Plan.md
 .private/
 *.hprof

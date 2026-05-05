@@ -6,6 +6,16 @@ Personal Finance Tracker is a multi-client personal finance project with:
 - a REST API in `apps/api`
 - a native Android app in `apps/android`
 
+## Security Model
+
+This app is intentionally local-first and designed for one user.
+
+It does not include authentication. Run it on `localhost` or a trusted private network only. Do not expose it directly to the public internet unless you add authentication, authorization, CSRF protection, rate limiting, and deployment hardening.
+
+Anyone who can access the running app can view, create, edit, delete, export, and modify finance data.
+
+The optional Tailscale access flow is intended for trusted tailnet-only access. Any device or user that can reach the exposed Tailscale URL should be considered trusted.
+
 The web stack is API-backed with MySQL. The Android app is local-first with Room/SQLite and optional push-only sync to the existing backend.
 
 ## Product Scope
@@ -356,7 +366,6 @@ Back up the release keystore outside the repo. Losing it blocks future updates t
 - `GET /api/activity`
 
 ## Before Pushing To GitHub
-
 Verify these are not committed:
 
 - `.env`
@@ -365,6 +374,7 @@ Verify these are not committed:
 - release keystores and signing properties
 - build outputs and generated APKs
 - database dumps and backup archives
+- one-off live-data SQL imports under `database/migrations`
 
 ## Missing But Worth Adding
 
@@ -376,3 +386,10 @@ For long-term use, the next useful additions are:
 - versioned Android Room migrations instead of destructive fallback only
 - screenshots for web and Android in the README
 - GitHub Actions for test and build verification
+
+## Additional Notes
+
+- Barcode scanning is still deferred.
+- Authentication is not included by design. Use only on localhost or a trusted private network unless you add auth and hardening.
+- Good next additions are savings goals, CSV import, attachments, and account management UI.
+- `.private/Plan.md` should be updated before and after future feature work.

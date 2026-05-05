@@ -10,6 +10,8 @@ npm run db:migrate
 
 The start flow runs migrations before the API starts. If Docker is installed but the daemon is down, the scripts fail with a clear message instead of a generic startup error.
 
+Do not commit live or personal finance imports into `database/migrations`. Keep backups under `backups/`, and run one-off private restore or import SQL outside the tracked migration set.
+
 ## Backup
 
 Create a timestamped compressed backup:
