@@ -12,8 +12,9 @@ sealed class Screen(
     object Budgets : Screen("budgets", "Budgets", supportsMonthControl = true)
     object Categories : Screen("categories", "Categories")
     object Reports : Screen("reports", "Reports", supportsMonthControl = true)
+    object Settings : Screen("settings", "Settings")
 
     companion object {
-        val entries = listOf(Dashboard, Transactions, Recurring, Budgets, Categories, Reports)
+        val entries = listOf(Dashboard, Transactions, Recurring, Budgets, Categories, Reports, Settings)
     }
 }

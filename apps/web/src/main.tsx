@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
+import { AppCrashBoundary } from "./components/AppCrashBoundary";
 import { AppShell } from "./shell/AppShell";
 import { LoadingState } from "./components/PageState";
 import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
@@ -16,6 +17,8 @@ const RecurringPage = lazy(() => import("./pages/RecurringPage").then((module) =
 const BudgetsPage = lazy(() => import("./pages/BudgetsPage").then((module) => ({ default: module.BudgetsPage })));
 const CategoriesPage = lazy(() => import("./pages/CategoriesPage").then((module) => ({ default: module.CategoriesPage })));
 const ReportsPage = lazy(() => import("./pages/ReportsPage").then((module) => ({ default: module.ReportsPage })));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage").then((module) => ({ default: module.NotFoundPage })));
+const SecurityPolicyPage = lazy(() => import("./pages/SecurityPolicyPage").then((module) => ({ default: module.SecurityPolicyPage })));
 
 function withSuspense(element: ReactNode) {
   return <Suspense fallback={<LoadingState message="Loading page…" />}>{element}</Suspense>;
@@ -33,17 +36,21 @@ const router = createBrowserRouter([
       { path: "recurring", element: withSuspense(<RecurringPage />) },
       { path: "budgets", element: withSuspense(<BudgetsPage />) },
       { path: "categories", element: withSuspense(<CategoriesPage />) },
-      { path: "reports", element: withSuspense(<ReportsPage />) }
+      { path: "reports", element: withSuspense(<ReportsPage />) },
+      { path: "security", element: withSuspense(<SecurityPolicyPage />) },
+      { path: "*", element: withSuspense(<NotFoundPage />) }
     ]
   }
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <AppCrashBoundary>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </AppCrashBoundary>
   </React.StrictMode>
 );

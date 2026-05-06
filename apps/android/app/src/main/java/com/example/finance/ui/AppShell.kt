@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Repeat
@@ -50,7 +51,8 @@ import com.example.finance.FinanceApplication
 import com.example.finance.ui.navigation.Screen
 import com.example.finance.ui.screens.DashboardScreen
 import com.example.finance.ui.screens.DashboardViewModel
-import com.example.finance.util.DateUtils
+import com.example.finance.ui.screens.SettingsScreen
+import com.example.finance.core.common.DateUtils
 import kotlinx.coroutines.launch
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -116,8 +118,9 @@ fun AppShell(
                                     Screen.Transactions -> Icons.Default.List
                                     Screen.Recurring -> Icons.Default.Repeat
                                     Screen.Budgets -> Icons.Default.Wallet
-                                    Screen.Categories -> Icons.Default.Settings
+                                    Screen.Categories -> Icons.Default.Label
                                     Screen.Reports -> Icons.Default.BarChart
+                                    Screen.Settings -> Icons.Default.Settings
                                 },
                                 contentDescription = screen.title
                             )
@@ -185,6 +188,9 @@ fun AppShell(
             }
             composable(Screen.Reports.route) {
                 com.example.finance.ui.screens.ReportsScreen(viewModel = com.example.finance.ui.screens.ReportsViewModel(application.repository, application.preferenceManager))
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(preferenceManager = application.preferenceManager)
             }
         }
     }

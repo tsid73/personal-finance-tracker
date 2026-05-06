@@ -95,19 +95,19 @@ class TransactionsViewModel(
 
     fun nextMonth() {
         viewModelScope.launch {
-            preferenceManager.setMonth(com.example.finance.util.DateUtils.shiftMonth(_selectedMonth.value, 1))
+            preferenceManager.setMonth(com.example.finance.core.common.DateUtils.shiftMonth(_selectedMonth.value, 1))
         }
     }
 
     fun prevMonth() {
         viewModelScope.launch {
-            preferenceManager.setMonth(com.example.finance.util.DateUtils.shiftMonth(_selectedMonth.value, -1))
+            preferenceManager.setMonth(com.example.finance.core.common.DateUtils.shiftMonth(_selectedMonth.value, -1))
         }
     }
 
     fun currentMonth() {
         viewModelScope.launch {
-            preferenceManager.setMonth(com.example.finance.util.DateUtils.getCurrentMonth())
+            preferenceManager.setMonth(com.example.finance.core.common.DateUtils.getCurrentMonth())
         }
     }
 }

@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import com.example.finance.util.DateUtils
+import com.example.finance.core.common.DateUtils
 
 class BudgetsViewModel(private val repository: FinanceRepository, private val preferenceManager: PreferenceManager) : ViewModel() {
     private val _budgets = MutableStateFlow<List<BudgetEntity>>(emptyList())
@@ -90,13 +90,13 @@ class BudgetsViewModel(private val repository: FinanceRepository, private val pr
 
     fun nextMonth() {
         viewModelScope.launch {
-            preferenceManager.setMonth(com.example.finance.util.DateUtils.shiftMonth(_selectedMonth.value, 1))
+            preferenceManager.setMonth(com.example.finance.core.common.DateUtils.shiftMonth(_selectedMonth.value, 1))
         }
     }
 
     fun prevMonth() {
         viewModelScope.launch {
-            preferenceManager.setMonth(com.example.finance.util.DateUtils.shiftMonth(_selectedMonth.value, -1))
+            preferenceManager.setMonth(com.example.finance.core.common.DateUtils.shiftMonth(_selectedMonth.value, -1))
         }
     }
 

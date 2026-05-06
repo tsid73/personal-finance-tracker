@@ -43,6 +43,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -54,8 +56,8 @@ import com.example.finance.data.entity.RecurringTransactionEntity
 import com.example.finance.domain.model.TransactionKind
 import com.example.finance.ui.components.DatePickerField
 import com.example.finance.ui.components.FinanceTopAppBar
-import com.example.finance.util.DateUtils
-import com.example.finance.util.MoneyFormatter
+import com.example.finance.core.common.DateUtils
+import com.example.finance.core.common.MoneyFormatter
 
 @Composable
 fun RecurringScreen(viewModel: RecurringViewModel) {
@@ -335,9 +337,17 @@ fun AddRecurringDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.RadioButton(selected = kind == TransactionKind.EXPENSE, onClick = { kind = TransactionKind.EXPENSE })
+                    androidx.compose.material3.RadioButton(
+                        selected = kind == TransactionKind.EXPENSE,
+                        onClick = { kind = TransactionKind.EXPENSE },
+                        modifier = Modifier.semantics { contentDescription = "Select expense type" }
+                    )
                     Text("Expense")
-                    androidx.compose.material3.RadioButton(selected = kind == TransactionKind.INCOME, onClick = { kind = TransactionKind.INCOME })
+                    androidx.compose.material3.RadioButton(
+                        selected = kind == TransactionKind.INCOME,
+                        onClick = { kind = TransactionKind.INCOME },
+                        modifier = Modifier.semantics { contentDescription = "Select income type" }
+                    )
                     Text("Income")
                 }
                 ExposedDropdownMenuBox(expanded = accountExpanded, onExpandedChange = { accountExpanded = !accountExpanded }) {

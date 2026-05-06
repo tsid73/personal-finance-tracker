@@ -50,8 +50,8 @@ import androidx.compose.ui.unit.dp
 import com.example.finance.data.entity.BudgetEntity
 import com.example.finance.data.entity.CategoryEntity
 import com.example.finance.ui.components.FinanceTopAppBar
-import com.example.finance.util.DateUtils
-import com.example.finance.util.MoneyFormatter
+import com.example.finance.core.common.DateUtils
+import com.example.finance.core.common.MoneyFormatter
 
 @Composable
 fun BudgetsScreen(viewModel: BudgetsViewModel) {

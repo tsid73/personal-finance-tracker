@@ -18,7 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import com.example.finance.util.MoneyFormatter
+import com.example.finance.core.common.MoneyFormatter
 
 @Composable
 fun SummaryCard(

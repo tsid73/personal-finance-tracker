@@ -54,10 +54,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.example.finance.FinanceApplication
+import com.example.finance.ui.components.BudgetBurnDownChart
+import com.example.finance.ui.components.BurnDownData
 import com.example.finance.ui.components.FinanceTopAppBar
 import com.example.finance.ui.components.SummaryCard
 import com.example.finance.util.BackupManager
-import com.example.finance.util.DateUtils
+import com.example.finance.core.common.DateUtils
 import kotlinx.coroutines.launch
 
 @Composable
@@ -130,6 +132,27 @@ fun DashboardScreen(viewModel: DashboardViewModel) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         SummaryCard(label = "Daily Safe", value = s.safeToSpend, icon = Icons.Default.Savings, modifier = Modifier.weight(1f))
                         SummaryCard(label = "Days left", value = s.remainingDays.toLong(), icon = Icons.Default.CalendarToday, modifier = Modifier.weight(1f), isCurrency = false)
+                    }
+                }
+                if (s.totalBudget > 0) {
+                    item {
+                        Card {
+                            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("Budget Burn-down", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                BudgetBurnDownChart(
+                                    data = BurnDownData(
+                                        dailySpent = s.dailySpentCumulative,
+                                        totalBudget = s.totalBudget,
+                                        daysInMonth = DateUtils.getDaysInMonth(selectedMonth)
+                                    )
+                                )
+                                Text(
+                                    "Actual spending vs. ideal budget line",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
                 item {

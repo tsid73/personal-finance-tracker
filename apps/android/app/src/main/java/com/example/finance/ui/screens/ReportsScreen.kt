@@ -45,10 +45,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.example.finance.ui.components.CategoryPieChart
 import com.example.finance.ui.components.FinanceTopAppBar
+import com.example.finance.ui.components.PieChartData
 import com.example.finance.util.BackupManager
-import com.example.finance.util.DateUtils
-import com.example.finance.util.MoneyFormatter
+import com.example.finance.core.common.DateUtils
+import com.example.finance.core.common.MoneyFormatter
 
 private enum class ReportScope { BUDGET_VS_ACTUAL, COMPARISON }
 
@@ -133,6 +135,20 @@ fun ReportsScreen(viewModel: ReportsViewModel) {
                 SummaryMetricCard("Top expense category", summary.topCategory)
             }
             if (scope == ReportScope.BUDGET_VS_ACTUAL) {
+                if (budgetVsActual.isNotEmpty()) {
+                    item {
+                        CategoryPieChart(
+                            data = budgetVsActual.map {
+                                PieChartData(
+                                    label = it.categoryName,
+                                    value = it.spentAmount.toFloat(),
+                                    color = parseColor(it.color)
+                                )
+                            },
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                }
                 if (budgetVsActual.isEmpty()) {
                     item {
                         Text("No budget or spending data for this month.", color = MaterialTheme.colorScheme.onSurfaceVariant)

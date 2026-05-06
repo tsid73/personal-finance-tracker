@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.finance.data.entity.RecurringTransactionEntity
 import com.example.finance.data.repository.FinanceRepository
 import com.example.finance.domain.usecase.SyncRecurringTransactionsUseCase
-import com.example.finance.util.DateUtils
+import com.example.finance.core.common.DateUtils
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -56,7 +56,7 @@ class RecurringViewModel(private val repository: FinanceRepository, private val 
                 amount = amount,
                 dayOfMonth = dayOfMonth,
                 startDate = startDate,
-                nextDueDate = com.example.finance.util.DateUtils.getInitialNextDueDate(startDate, dayOfMonth),
+                nextDueDate = com.example.finance.core.common.DateUtils.getInitialNextDueDate(startDate, dayOfMonth),
                 autoCreate = autoCreate,
                 isActive = isActive,
                 notes = notes,

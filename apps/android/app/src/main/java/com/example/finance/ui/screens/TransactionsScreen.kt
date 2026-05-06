@@ -29,8 +29,10 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -45,6 +47,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -56,16 +59,22 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import com.example.finance.data.entity.AccountEntity
 import com.example.finance.data.entity.CategoryEntity
 import com.example.finance.data.entity.TransactionEntity
@@ -73,8 +82,10 @@ import com.example.finance.domain.model.TransactionKind
 import com.example.finance.ui.components.DatePickerField
 import com.example.finance.ui.components.FinanceTopAppBar
 import com.example.finance.util.BackupManager
-import com.example.finance.util.DateUtils
-import com.example.finance.util.MoneyFormatter
+import com.example.finance.core.common.DateUtils
+import com.example.finance.core.common.MoneyFormatter
+import com.example.finance.util.ReceiptScanner
+import kotlinx.coroutines.launch
 
 private enum class KindFilter { ALL, EXPENSE, INCOME }
 
@@ -407,11 +418,13 @@ private fun TransactionItem(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                if (!transaction.merchant.isNullOrBlank()) {
-                    Text(transaction.merchant, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                val merchant = transaction.merchant
+                if (!merchant.isNullOrBlank()) {
+                    Text(merchant, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                 }
-                if (!transaction.notes.isNullOrBlank()) {
-                    Text(transaction.notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                val notes = transaction.notes
+                if (!notes.isNullOrBlank()) {
+                    Text(notes, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 Row {
                     IconButton(onClick = onEdit) { Icon(Icons.Default.Edit, contentDescription = "Edit transaction") }
@@ -441,15 +454,34 @@ fun TransactionEditorDialog(
     var selectedCategory by remember(initialTransaction, categories, kind) { mutableStateOf(categories.find { it.id == initialTransaction?.categoryId } ?: categories.firstOrNull { it.type == kind && !it.isArchived }) }
     var date by remember(initialTransaction, selectedMonth) {
         mutableStateOf(
-            DateUtils.coerceDate(
+            DateUtils.getInitialTransactionDate(
                 initialTransaction?.transactionDate,
-                "${selectedMonth}-${DateUtils.today().takeLast(2)}"
+                selectedMonth
             )
         )
     }
     var accountExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
+    var isScanning by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        uri?.let {
+            isScanning = true
+            scope.launch {
+                val scanned = ReceiptScanner.scan(context, it)
+                scanned?.let { result ->
+                    result.merchant?.let { m -> title = m }
+                    result.amount?.let { a -> amount = (a / 100.0).toString() }
+                    result.date?.let { d -> date = DateUtils.formatDate(d) }
+                }
+                isScanning = false
+            }
+        }
+    }
+
     val isDirty = remember(
         title,
         amount,
@@ -468,9 +500,9 @@ fun TransactionEditorDialog(
             merchant != (initialTransaction?.merchant ?: "") ||
             selectedAccount?.id != initialTransaction?.accountId ||
             selectedCategory?.id != initialTransaction?.categoryId ||
-            date != DateUtils.coerceDate(
+            date != DateUtils.getInitialTransactionDate(
                 initialTransaction?.transactionDate,
-                "${selectedMonth}-${DateUtils.today().takeLast(2)}"
+                selectedMonth
             )
     }
 
@@ -485,6 +517,9 @@ fun TransactionEditorDialog(
                     FinanceTopAppBar(
                         title = if (initialTransaction == null) "Add transaction" else "Edit transaction",
                         actions = {
+                            TextButton(onClick = ::requestDismiss) {
+                                Text("Cancel")
+                            }
                             TextButton(
                                 onClick = {
                                     val accountId = selectedAccount?.id ?: return@TextButton
@@ -516,19 +551,43 @@ fun TransactionEditorDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    if (isScanning) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                    if (initialTransaction == null) {
+                        Button(
+                            onClick = {
+                                launcher.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isScanning
+                        ) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Text("Scan Receipt")
+                        }
+                    }
                     OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = amount, onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) amount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(checked = kind == TransactionKind.EXPENSE, onCheckedChange = {
-                            kind = TransactionKind.EXPENSE
-                            selectedCategory = categories.firstOrNull { category -> category.type == kind && !category.isArchived }
-                        })
+                        Checkbox(
+                            checked = kind == TransactionKind.EXPENSE,
+                            onCheckedChange = {
+                                kind = TransactionKind.EXPENSE
+                                selectedCategory = categories.firstOrNull { category -> category.type == kind && !category.isArchived }
+                            },
+                            modifier = Modifier.semantics { contentDescription = "Select expense type" }
+                        )
                         Text("Expense")
                         Spacer(modifier = Modifier.size(12.dp))
-                        Checkbox(checked = kind == TransactionKind.INCOME, onCheckedChange = {
-                            kind = TransactionKind.INCOME
-                            selectedCategory = categories.firstOrNull { category -> category.type == kind && !category.isArchived }
-                        })
+                        Checkbox(
+                            checked = kind == TransactionKind.INCOME,
+                            onCheckedChange = {
+                                kind = TransactionKind.INCOME
+                                selectedCategory = categories.firstOrNull { category -> category.type == kind && !category.isArchived }
+                            },
+                            modifier = Modifier.semantics { contentDescription = "Select income type" }
+                        )
                         Text("Income")
                     }
                     ExposedDropdownMenuBox(expanded = accountExpanded, onExpandedChange = { accountExpanded = !accountExpanded }) {

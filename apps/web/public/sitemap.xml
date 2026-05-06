@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>http://localhost:5173/</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/dashboard</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/transactions</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/recurring</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/budgets</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/categories</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/reports</loc>
+  </url>
+  <url>
+    <loc>http://localhost:5173/security</loc>
+  </url>
+</urlset>

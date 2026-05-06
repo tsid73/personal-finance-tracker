@@ -77,21 +77,21 @@ class DashboardViewModel(
 
     fun nextMonth() {
         viewModelScope.launch {
-            val next = com.example.finance.util.DateUtils.shiftMonth(_selectedMonth.value, 1)
+            val next = com.example.finance.core.common.DateUtils.shiftMonth(_selectedMonth.value, 1)
             preferenceManager.setMonth(next)
         }
     }
 
     fun prevMonth() {
         viewModelScope.launch {
-            val prev = com.example.finance.util.DateUtils.shiftMonth(_selectedMonth.value, -1)
+            val prev = com.example.finance.core.common.DateUtils.shiftMonth(_selectedMonth.value, -1)
             preferenceManager.setMonth(prev)
         }
     }
 
     fun currentMonth() {
         viewModelScope.launch {
-            preferenceManager.setMonth(com.example.finance.util.DateUtils.getCurrentMonth())
+            preferenceManager.setMonth(com.example.finance.core.common.DateUtils.getCurrentMonth())
         }
     }
 
