@@ -14,6 +14,7 @@ import com.example.finance.domain.model.BudgetMode
 import com.example.finance.domain.model.TransactionKind
 import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 
 data class CategoryUsage(
@@ -116,7 +117,38 @@ class FinanceRepository(private val db: AppDatabase) {
             TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 14, kind = TransactionKind.EXPENSE, title = "ULIP", amount = 249900, transactionDate = "2026-04-24"),
             TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Haircut", amount = 15000, transactionDate = "2026-04-26"),
             TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Kite Fund", amount = 10000, transactionDate = "2026-04-28"),
-            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Home things", amount = 151300, transactionDate = "2026-04-28")
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Home things", amount = 151300, transactionDate = "2026-04-28"),
+
+            // May 2026
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 11, kind = TransactionKind.EXPENSE, title = "CC", merchant = "Amazon", amount = 650000, transactionDate = "2026-05-01"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 11, kind = TransactionKind.EXPENSE, title = "CC", merchant = "Indusind", amount = 210000, transactionDate = "2026-05-02"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Groceries", merchant = "Instamart", amount = 70000, transactionDate = "2026-05-03"),
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 12, kind = TransactionKind.EXPENSE, title = "EMI", merchant = "Axis Bank", amount = 3100000, transactionDate = "2026-05-05"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Repair", merchant = "Urban Company", amount = 100000, transactionDate = "2026-05-05"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Papa", merchant = "Home", amount = 310000, transactionDate = "2026-05-07"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Groceries", merchant = "Zepto", amount = 56000, transactionDate = "2026-05-07"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Apay", merchant = "Amazon", amount = 100000, transactionDate = "2026-05-09"),
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 3, kind = TransactionKind.EXPENSE, title = "LinkedIn Subscription", merchant = "LinkedIn", amount = 50000, transactionDate = "2026-05-11"),
+            TransactionEntity(userId = demoUserId, accountId = 5, categoryId = 13, kind = TransactionKind.EXPENSE, title = "Food", merchant = "Misc", amount = 12000, transactionDate = "2026-05-13"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 11, kind = TransactionKind.EXPENSE, title = "CC", merchant = "Amazon", amount = 676600, transactionDate = "2026-05-13"),
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 7, kind = TransactionKind.EXPENSE, title = "Netflix", merchant = "Netflix", amount = 19900, transactionDate = "2026-05-14"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Gpay lite", merchant = "Gpay", amount = 100000, transactionDate = "2026-05-16"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 13, kind = TransactionKind.EXPENSE, title = "Food", merchant = "Swiggy", amount = 6000, transactionDate = "2026-05-19"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 11, kind = TransactionKind.EXPENSE, title = "CC", merchant = "Axis", amount = 117700, transactionDate = "2026-05-20"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Groceries", merchant = "Mix", amount = 110000, transactionDate = "2026-05-20"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 3, kind = TransactionKind.EXPENSE, title = "Net + DTH", merchant = "Airtel", amount = 93200, transactionDate = "2026-05-20"),
+            TransactionEntity(userId = demoUserId, accountId = 5, categoryId = 13, kind = TransactionKind.EXPENSE, title = "Food", merchant = "Gajanan Sweets", amount = 30000, transactionDate = "2026-05-21"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Advance Tax", merchant = "IT", amount = 100000, transactionDate = "2026-05-25"),
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 14, kind = TransactionKind.EXPENSE, title = "ULIP", merchant = "Tata AIA", amount = 250000, transactionDate = "2026-05-25"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Misc Groceries", merchant = "Blinkit", amount = 100000, transactionDate = "2026-05-26"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 1, kind = TransactionKind.EXPENSE, title = "Groceries", merchant = "BB", amount = 45000, transactionDate = "2026-05-30"),
+
+            // Jun 2026
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 14, kind = TransactionKind.EXPENSE, title = "Investment", merchant = "Mix", amount = 4000000, transactionDate = "2026-06-02"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 15, kind = TransactionKind.EXPENSE, title = "Home", merchant = "Me+Mum", amount = 300000, transactionDate = "2026-06-03"),
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 12, kind = TransactionKind.EXPENSE, title = "EMI", merchant = "Axis Bank", amount = 3100000, transactionDate = "2026-06-05"),
+            TransactionEntity(userId = demoUserId, accountId = 4, categoryId = 3, kind = TransactionKind.EXPENSE, title = "Net + DTH", merchant = "Airtel", amount = 93200, transactionDate = "2026-06-19"),
+            TransactionEntity(userId = demoUserId, accountId = 1, categoryId = 14, kind = TransactionKind.EXPENSE, title = "ULIP", merchant = "Tata AIA", amount = 249900, transactionDate = "2026-06-24")
         ))
 
         // Seed monthly targets
@@ -249,11 +281,11 @@ class FinanceRepository(private val db: AppDatabase) {
     suspend fun getTotalAllocated(month: Int, year: Int): Long = db.budgetDao().getTotalAllocated(demoUserId, month, year) ?: 0L
     suspend fun getBackupSnapshot(): BackupSnapshot {
         return BackupSnapshot(
-            accounts = db.accountDao().getAccounts(demoUserId).firstOrNull() ?: emptyList(),
-            categories = db.categoryDao().getCategories(demoUserId, true).firstOrNull() ?: emptyList(),
-            transactions = db.transactionDao().getAllTransactions(demoUserId).firstOrNull() ?: emptyList(),
-            recurring = db.recurringDao().getRecurringTransactions(demoUserId).firstOrNull() ?: emptyList(),
-            budgets = db.budgetDao().getAllBudgets(demoUserId).firstOrNull() ?: emptyList(),
+            accounts = db.accountDao().getAccounts(demoUserId).first(),
+            categories = db.categoryDao().getCategories(demoUserId, true).first(),
+            transactions = db.transactionDao().getAllTransactions(demoUserId).first(),
+            recurring = db.recurringDao().getRecurringTransactions(demoUserId).first(),
+            budgets = db.budgetDao().getAllBudgets(demoUserId).first(),
             monthlyTargets = getAllMonthlyTargets()
         )
     }
@@ -265,11 +297,11 @@ class FinanceRepository(private val db: AppDatabase) {
             exportedAt = System.currentTimeMillis(),
             appSettings = appSettings,
             users = users,
-            accounts = db.accountDao().getAccounts(demoUserId).firstOrNull() ?: emptyList(),
-            categories = db.categoryDao().getCategories(demoUserId, true).firstOrNull() ?: emptyList(),
-            transactions = db.transactionDao().getAllTransactions(demoUserId).firstOrNull() ?: emptyList(),
-            recurring = db.recurringDao().getRecurringTransactions(demoUserId).firstOrNull() ?: emptyList(),
-            budgets = db.budgetDao().getAllBudgets(demoUserId).firstOrNull() ?: emptyList(),
+            accounts = db.accountDao().getAccounts(demoUserId).first(),
+            categories = db.categoryDao().getCategories(demoUserId, true).first(),
+            transactions = db.transactionDao().getAllTransactions(demoUserId).first(),
+            recurring = db.recurringDao().getRecurringTransactions(demoUserId).first(),
+            budgets = db.budgetDao().getAllBudgets(demoUserId).first(),
             monthlyTargets = getAllMonthlyTargets(),
             activityLogs = db.activityDao().getAllActivity(demoUserId)
         )
@@ -278,33 +310,40 @@ class FinanceRepository(private val db: AppDatabase) {
     suspend fun restoreLocalBackup(document: LocalBackupDocument): RestoreValidationResult {
         val validation = BackupValidator.validate(document)
 
-        db.withTransaction {
-            db.activityDao().deleteAll()
-            db.transactionDao().deleteAll()
-            db.recurringDao().deleteAll()
-            db.budgetDao().deleteAllBudgets()
-            db.budgetDao().deleteAllMonthlyTargets()
-            db.categoryDao().deleteAll()
-            db.accountDao().deleteAll()
-            db.userDao().deleteAll()
+        try {
+            db.withTransaction {
+                // Delete everything in reverse dependency order
+                db.activityDao().deleteAll()
+                db.transactionDao().deleteAll()
+                db.recurringDao().deleteAll()
+                db.budgetDao().deleteAllBudgets()
+                db.budgetDao().deleteAllMonthlyTargets()
+                db.categoryDao().deleteAll()
+                db.accountDao().deleteAll()
+                db.userDao().deleteAll()
 
-            db.userDao().insertUsers(document.users)
-            db.accountDao().insertAccounts(document.accounts)
-            db.categoryDao().insertCategories(document.categories)
-            db.recurringDao().insertRecurringList(document.recurring)
-            db.transactionDao().insertTransactions(document.transactions)
-            db.budgetDao().insertBudgets(document.budgets)
-            db.budgetDao().insertMonthlyTargets(document.monthlyTargets)
-            db.activityDao().insertLogs(
-                document.activityLogs + ActivityLogEntity(
-                    userId = demoUserId,
-                    entityType = "backup",
-                    entityId = null,
-                    action = "restore",
-                    title = "Restored app data from backup",
-                    source = "backup"
+                // Re-insert everything in dependency order
+                db.userDao().insertUsers(document.users ?: emptyList())
+                db.accountDao().insertAccounts(document.accounts ?: emptyList())
+                db.categoryDao().insertCategories(document.categories ?: emptyList())
+                db.recurringDao().insertRecurringList(document.recurring ?: emptyList())
+                db.transactionDao().insertTransactions(document.transactions ?: emptyList())
+                db.budgetDao().insertBudgets(document.budgets ?: emptyList())
+                db.budgetDao().insertMonthlyTargets(document.monthlyTargets ?: emptyList())
+                
+                db.activityDao().insertLogs(
+                    (document.activityLogs ?: emptyList()) + ActivityLogEntity(
+                        userId = demoUserId,
+                        entityType = "backup",
+                        entityId = null,
+                        action = "restore",
+                        title = "Restored app data from backup",
+                        source = "backup"
+                    )
                 )
-            )
+            }
+        } catch (e: Exception) {
+            throw Exception("Database restore failed: ${e.message}", e)
         }
 
         return validation

@@ -10,7 +10,10 @@ import com.google.gson.GsonBuilder
 import java.io.File
 
 object BackupManager {
-    private val gson = GsonBuilder().setPrettyPrinting().create()
+    private val gson = GsonBuilder()
+        .setPrettyPrinting()
+        .serializeNulls()
+        .create()
 
     fun exportTransactionsToCsv(context: Context, rows: List<Map<String, String>>): File {
         val headers = listOf("Date", "Title", "Kind", "Amount", "Category", "Account", "Merchant", "Notes")

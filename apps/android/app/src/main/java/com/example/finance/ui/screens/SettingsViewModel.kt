@@ -98,7 +98,9 @@ class SettingsViewModel(
     fun restoreDocument(document: LocalBackupDocument) {
         runExclusive(SettingsOperation.RESTORE) {
             val validation = repository.restoreLocalBackup(document)
-            preferenceManager.restoreSnapshot(document.appSettings)
+            document.appSettings?.let {
+                preferenceManager.restoreSnapshot(it)
+            }
             _statusMessage.value = "Restore completed. ${validation.transactionCount} transactions restored."
         }
     }

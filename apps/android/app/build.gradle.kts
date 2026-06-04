@@ -52,6 +52,8 @@ android {
             applicationIdSuffix = ".banksafe"
             versionNameSuffix = "-banksafe"
             resValue("string", "app_name", "Money Ledger")
+            // Use debug signing if release key is not configured, ensuring we get a signed APK
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
     }

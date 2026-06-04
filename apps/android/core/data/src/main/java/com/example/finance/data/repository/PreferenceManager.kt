@@ -95,10 +95,10 @@ class PreferenceManager(private val context: Context) {
             } else {
                 preferences[themeKey] = snapshot.darkTheme
             }
-            preferences[monthKey] = snapshot.selectedMonth
-            preferences[syncEnabledKey] = snapshot.syncEnabled
-            preferences[syncBaseUrlKey] = snapshot.syncBaseUrl.trim().trimEnd('/')
-            preferences[biometricEnabledKey] = snapshot.biometricEnabled
+            preferences[monthKey] = snapshot.selectedMonth ?: LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"))
+            preferences[syncEnabledKey] = snapshot.syncEnabled ?: false
+            preferences[syncBaseUrlKey] = (snapshot.syncBaseUrl ?: "").trim().trimEnd('/')
+            preferences[biometricEnabledKey] = snapshot.biometricEnabled ?: false
         }
     }
 }

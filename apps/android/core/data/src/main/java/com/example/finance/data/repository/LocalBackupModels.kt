@@ -8,29 +8,34 @@ import com.example.finance.data.entity.MonthlyBudgetTargetEntity
 import com.example.finance.data.entity.RecurringTransactionEntity
 import com.example.finance.data.entity.TransactionEntity
 import com.example.finance.data.entity.UserEntity
+import com.google.gson.annotations.SerializedName
+import androidx.annotation.Keep
 
+@Keep
 data class AppSettingsSnapshot(
-    val darkTheme: Boolean?,
-    val selectedMonth: String,
-    val syncEnabled: Boolean,
-    val syncBaseUrl: String,
-    val biometricEnabled: Boolean
+    @SerializedName("darkTheme") val darkTheme: Boolean?,
+    @SerializedName("selectedMonth") val selectedMonth: String?,
+    @SerializedName("syncEnabled") val syncEnabled: Boolean?,
+    @SerializedName("syncBaseUrl") val syncBaseUrl: String?,
+    @SerializedName("biometricEnabled") val biometricEnabled: Boolean?
 )
 
+@Keep
 data class LocalBackupDocument(
-    val formatVersion: Int,
-    val exportedAt: Long,
-    val appSettings: AppSettingsSnapshot,
-    val users: List<UserEntity>,
-    val accounts: List<AccountEntity>,
-    val categories: List<CategoryEntity>,
-    val transactions: List<TransactionEntity>,
-    val recurring: List<RecurringTransactionEntity>,
-    val budgets: List<BudgetEntity>,
-    val monthlyTargets: List<MonthlyBudgetTargetEntity>,
-    val activityLogs: List<ActivityLogEntity>
+    @SerializedName("formatVersion") val formatVersion: Int,
+    @SerializedName("exportedAt") val exportedAt: Long,
+    @SerializedName("appSettings") val appSettings: AppSettingsSnapshot?,
+    @SerializedName("users") val users: List<UserEntity>?,
+    @SerializedName("accounts") val accounts: List<AccountEntity>?,
+    @SerializedName("categories") val categories: List<CategoryEntity>?,
+    @SerializedName("transactions") val transactions: List<TransactionEntity>?,
+    @SerializedName("recurring") val recurring: List<RecurringTransactionEntity>?,
+    @SerializedName("budgets") val budgets: List<BudgetEntity>?,
+    @SerializedName("monthlyTargets") val monthlyTargets: List<MonthlyBudgetTargetEntity>?,
+    @SerializedName("activityLogs") val activityLogs: List<ActivityLogEntity>?
 )
 
+@Keep
 data class RestoreValidationResult(
     val transactionCount: Int,
     val recurringCount: Int,
