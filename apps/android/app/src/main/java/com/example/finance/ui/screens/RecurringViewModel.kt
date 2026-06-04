@@ -46,6 +46,16 @@ class RecurringViewModel(private val repository: FinanceRepository, private val 
         merchant: String?
     ) {
         viewModelScope.launch {
+            val existing = if (id == 0) null else repository.getRecurringById(id)
+            val nextDueDate = when {
+                existing == null -> DateUtils.getInitialNextDueDate(startDate, dayOfMonth)
+                existing.dayOfMonth == dayOfMonth && existing.startDate == startDate -> existing.nextDueDate
+                else -> DateUtils.getFirstMonthlyDueOnOrAfter(
+                    referenceDate = maxOf(DateUtils.today(), existing.nextDueDate, startDate),
+                    dayOfMonth = dayOfMonth,
+                    startDate = startDate
+                )
+            }
             val recurring = com.example.finance.data.entity.RecurringTransactionEntity(
                 id = id,
                 userId = 1,
@@ -56,7 +66,7 @@ class RecurringViewModel(private val repository: FinanceRepository, private val 
                 amount = amount,
                 dayOfMonth = dayOfMonth,
                 startDate = startDate,
-                nextDueDate = com.example.finance.core.common.DateUtils.getInitialNextDueDate(startDate, dayOfMonth),
+                nextDueDate = nextDueDate,
                 autoCreate = autoCreate,
                 isActive = isActive,
                 notes = notes,
@@ -80,29 +90,30 @@ class RecurringViewModel(private val repository: FinanceRepository, private val 
         viewModelScope.launch {
             val existing = _recurring.value
             val targetKeys = existing.mapTo(mutableSetOf()) { recurring ->
-                listOf(
-                    recurring.title,
-                    recurring.amount.toString(),
-                    recurring.kind.name,
-                    recurring.accountId.toString(),
-                    recurring.categoryId.toString(),
-                    recurring.dayOfMonth.toString(),
-                    recurring.startDate
-                ).joinToString("|")
+                recurringCopyKey(
+                    title = recurring.title,
+                    amount = recurring.amount,
+                    kind = recurring.kind.name,
+                    accountId = recurring.accountId,
+                    categoryId = recurring.categoryId,
+                    dayOfMonth = recurring.dayOfMonth,
+                    startDate = recurring.startDate
+                )
             }
+
             existing.forEach { recurring ->
                 val shiftedStartDate = DateUtils.getNextMonthlyDueDate(recurring.startDate, recurring.dayOfMonth)
-                val targetKey = listOf(
-                    recurring.title,
-                    recurring.amount.toString(),
-                    recurring.kind.name,
-                    recurring.accountId.toString(),
-                    recurring.categoryId.toString(),
-                    recurring.dayOfMonth.toString(),
-                    shiftedStartDate
-                ).joinToString("|")
-                val duplicateExists = targetKey in targetKeys
-                if (!duplicateExists) {
+                val targetKey = recurringCopyKey(
+                    title = recurring.title,
+                    amount = recurring.amount,
+                    kind = recurring.kind.name,
+                    accountId = recurring.accountId,
+                    categoryId = recurring.categoryId,
+                    dayOfMonth = recurring.dayOfMonth,
+                    startDate = shiftedStartDate
+                )
+
+                if (targetKey !in targetKeys) {
                     repository.addRecurring(
                         recurring.copy(
                             id = 0,
@@ -115,5 +126,25 @@ class RecurringViewModel(private val repository: FinanceRepository, private val 
                 }
             }
         }
+    }
+
+    private fun recurringCopyKey(
+        title: String,
+        amount: Long,
+        kind: String,
+        accountId: Int,
+        categoryId: Int,
+        dayOfMonth: Int,
+        startDate: String
+    ): String {
+        return listOf(
+            title,
+            amount.toString(),
+            kind,
+            accountId.toString(),
+            categoryId.toString(),
+            dayOfMonth.toString(),
+            startDate
+        ).joinToString("|")
     }
 }

@@ -64,7 +64,7 @@ class ReportsViewModel(
     private val repository: FinanceRepository,
     private val preferenceManager: PreferenceManager
 ) : ViewModel() {
-    private val monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM")
+    private val monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM", java.util.Locale.ROOT)
 
     private val _summary = MutableStateFlow(ReportSummary())
     val summary: StateFlow<ReportSummary> = _summary.asStateFlow()
@@ -262,7 +262,7 @@ class ReportsViewModel(
         }
     }
 
-    private fun formatMonthKey(year: Int, month: Int): String = "%04d-%02d".format(year, month)
+    private fun formatMonthKey(year: Int, month: Int): String = "%04d-%02d".format(java.util.Locale.US, year, month)
 
     private fun formatExportAmount(amountCents: Long): String = "%.2f".format(amountCents / 100.0)
 }

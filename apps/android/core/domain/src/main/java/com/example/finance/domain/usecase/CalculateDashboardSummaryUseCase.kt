@@ -17,12 +17,7 @@ class CalculateDashboardSummaryUseCase(private val repository: FinanceRepository
         
         val target = repository.getMonthlyTarget(month, year).first()?.totalBudget ?: 0L
         val allocated = repository.getTotalAllocated(month, year)
-        
-        // budgetSpent is total expense in categories that have a budget
-        // Actually, the API does a sum of spentAmount from budgetRows
-        // I'll need to fetch budget progress too.
-        
-        val budgetSpent = expense // Simplification for now, or I should calculate properly
+        val (budgetSpent, fixedBudget, flexibleBudget) = repository.calculateBudgetBreakdown(monthKey)
         
         val remainingDays = DateUtils.getRemainingDays(monthKey)
         val safeToSpend = if (remainingDays > 0) (target - expense) / remainingDays else 0L
@@ -57,8 +52,8 @@ class CalculateDashboardSummaryUseCase(private val repository: FinanceRepository
             savingsRate = if (income > 0) ((income - expense).toDouble() / income) * 100 else 0.0,
             safeToSpend = safeToSpend,
             remainingDays = remainingDays,
-            fixedBudget = 0L, // TODO: calculate from category budget modes
-            flexibleBudget = target, // TODO: calculate
+            fixedBudget = fixedBudget,
+            flexibleBudget = flexibleBudget,
             dailySpentCumulative = dailySpentCumulative
         )
     }

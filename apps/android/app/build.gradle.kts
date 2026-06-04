@@ -17,7 +17,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.pftracker.android.app"
+        applicationId = "com.pftracker.android.appv2"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -46,6 +46,13 @@ android {
             isShrinkResources = true
             signingConfig = signingConfigs.findByName("release")
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+        create("banksafe") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".banksafe"
+            versionNameSuffix = "-banksafe"
+            resValue("string", "app_name", "Money Ledger")
+            matchingFallbacks += listOf("release")
         }
     }
     compileOptions {

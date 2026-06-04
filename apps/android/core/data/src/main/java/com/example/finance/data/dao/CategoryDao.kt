@@ -37,4 +37,7 @@ interface CategoryDao {
 
     @Query("SELECT * FROM categories WHERE LOWER(name) = LOWER(:name) AND type = :type AND is_archived = 0 AND (user_id IS NULL OR user_id = :userId) LIMIT 1")
     suspend fun findCategoryByName(name: String, type: TransactionKind, userId: Int): CategoryEntity?
+
+    @Query("DELETE FROM categories")
+    suspend fun deleteAll()
 }

@@ -49,9 +49,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.finance.FinanceApplication
 import com.example.finance.ui.navigation.Screen
-import com.example.finance.ui.screens.DashboardScreen
-import com.example.finance.ui.screens.DashboardViewModel
-import com.example.finance.ui.screens.SettingsScreen
 import com.example.finance.core.common.DateUtils
 import kotlinx.coroutines.launch
 import java.time.YearMonth
@@ -172,25 +169,49 @@ fun AppShell(
             }
         ) {
             composable(Screen.Dashboard.route) {
-                DashboardScreen(viewModel = DashboardViewModel(application.repository, application.preferenceManager))
+                val viewModel = financeViewModel(com.example.finance.ui.screens.DashboardViewModel::class.java) {
+                    com.example.finance.ui.screens.DashboardViewModel(application.repository, application.preferenceManager)
+                }
+                com.example.finance.ui.screens.DashboardScreen(viewModel = viewModel)
             }
             composable(Screen.Transactions.route) {
-                com.example.finance.ui.screens.TransactionsScreen(viewModel = com.example.finance.ui.screens.TransactionsViewModel(application.repository, application.preferenceManager))
+                val viewModel = financeViewModel(com.example.finance.ui.screens.TransactionsViewModel::class.java) {
+                    com.example.finance.ui.screens.TransactionsViewModel(application.repository, application.preferenceManager)
+                }
+                com.example.finance.ui.screens.TransactionsScreen(viewModel = viewModel)
             }
             composable(Screen.Recurring.route) {
-                com.example.finance.ui.screens.RecurringScreen(viewModel = com.example.finance.ui.screens.RecurringViewModel(application.repository, application.database))
+                val viewModel = financeViewModel(com.example.finance.ui.screens.RecurringViewModel::class.java) {
+                    com.example.finance.ui.screens.RecurringViewModel(application.repository, application.database)
+                }
+                com.example.finance.ui.screens.RecurringScreen(viewModel = viewModel)
             }
             composable(Screen.Budgets.route) {
-                com.example.finance.ui.screens.BudgetsScreen(viewModel = com.example.finance.ui.screens.BudgetsViewModel(application.repository, application.preferenceManager))
+                val viewModel = financeViewModel(com.example.finance.ui.screens.BudgetsViewModel::class.java) {
+                    com.example.finance.ui.screens.BudgetsViewModel(application.repository, application.preferenceManager)
+                }
+                com.example.finance.ui.screens.BudgetsScreen(viewModel = viewModel)
             }
             composable(Screen.Categories.route) {
-                com.example.finance.ui.screens.CategoriesScreen(viewModel = com.example.finance.ui.screens.CategoriesViewModel(application.repository))
+                val viewModel = financeViewModel(com.example.finance.ui.screens.CategoriesViewModel::class.java) {
+                    com.example.finance.ui.screens.CategoriesViewModel(application.repository)
+                }
+                com.example.finance.ui.screens.CategoriesScreen(viewModel = viewModel)
             }
             composable(Screen.Reports.route) {
-                com.example.finance.ui.screens.ReportsScreen(viewModel = com.example.finance.ui.screens.ReportsViewModel(application.repository, application.preferenceManager))
+                val viewModel = financeViewModel(com.example.finance.ui.screens.ReportsViewModel::class.java) {
+                    com.example.finance.ui.screens.ReportsViewModel(application.repository, application.preferenceManager)
+                }
+                com.example.finance.ui.screens.ReportsScreen(viewModel = viewModel)
             }
             composable(Screen.Settings.route) {
-                SettingsScreen(preferenceManager = application.preferenceManager)
+                val viewModel = financeViewModel(com.example.finance.ui.screens.SettingsViewModel::class.java) {
+                    com.example.finance.ui.screens.SettingsViewModel(application.repository, application.preferenceManager)
+                }
+                com.example.finance.ui.screens.SettingsScreen(
+                    viewModel = viewModel,
+                    preferenceManager = application.preferenceManager
+                )
             }
         }
     }

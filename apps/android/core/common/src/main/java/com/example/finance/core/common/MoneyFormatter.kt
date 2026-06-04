@@ -15,7 +15,7 @@ object MoneyFormatter {
 
     fun parseToCents(amount: String): Long {
         return try {
-            (amount.toDouble() * 100).toLong()
+            kotlin.math.round(amount.toDouble() * 100).toLong()
         } catch (e: Exception) {
             0L
         }

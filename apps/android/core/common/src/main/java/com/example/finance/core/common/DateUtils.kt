@@ -6,9 +6,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 object DateUtils {
-    private val monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM")
+    private val monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM", java.util.Locale.ROOT)
     private val displayMonthFormatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ENGLISH)
-    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
+    private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd", java.util.Locale.ROOT)
     private val displayDateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH)
 
     fun getCurrentMonth(): String = LocalDate.now().format(monthFormatter)
@@ -112,5 +112,19 @@ object DateUtils {
         var nextDue = current.plusMonths(1)
         nextDue = nextDue.withDayOfMonth(minOf(dayOfMonth, nextDue.lengthOfMonth()))
         return nextDue.format(dateFormatter)
+    }
+
+    fun getFirstMonthlyDueOnOrAfter(referenceDate: String, dayOfMonth: Int, startDate: String): String {
+        val reference = LocalDate.parse(referenceDate, dateFormatter)
+        val start = LocalDate.parse(startDate, dateFormatter)
+        var candidateMonth = if (reference.isAfter(start)) YearMonth.from(reference) else YearMonth.from(start)
+
+        while (true) {
+            val dueDate = candidateMonth.atDay(minOf(dayOfMonth, candidateMonth.lengthOfMonth()))
+            if (!dueDate.isBefore(start) && !dueDate.isBefore(reference)) {
+                return dueDate.format(dateFormatter)
+            }
+            candidateMonth = candidateMonth.plusMonths(1)
+        }
     }
 }

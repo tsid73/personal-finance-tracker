@@ -26,5 +26,6 @@ data class ActivityLogEntity(
     val action: String,
     val title: String,
     val note: String? = null,
+    val source: String = "local",
     @ColumnInfo(name = "created_at") val createdAt: Long = System.currentTimeMillis()
 )

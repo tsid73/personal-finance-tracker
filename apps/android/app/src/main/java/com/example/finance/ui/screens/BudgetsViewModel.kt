@@ -28,7 +28,7 @@ class BudgetsViewModel(private val repository: FinanceRepository, private val pr
     private val _selectedMonth = MutableStateFlow("")
     val selectedMonth: StateFlow<String> = _selectedMonth.asStateFlow()
 
-    val categories: StateFlow<List<CategoryEntity>> = repository.getCategories(false)
+    val categories: StateFlow<List<CategoryEntity>> = repository.getCategories(true)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {

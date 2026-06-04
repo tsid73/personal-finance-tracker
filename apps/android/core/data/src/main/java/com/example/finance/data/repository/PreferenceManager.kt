@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
@@ -47,6 +48,12 @@ class PreferenceManager(private val context: Context) {
         }
     }
 
+    suspend fun clearTheme() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(themeKey)
+        }
+    }
+
     suspend fun setMonth(month: String) {
         context.dataStore.edit { preferences ->
             preferences[monthKey] = month
@@ -68,6 +75,30 @@ class PreferenceManager(private val context: Context) {
     suspend fun setBiometricEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[biometricEnabledKey] = enabled
+        }
+    }
+
+    suspend fun getSnapshot(): AppSettingsSnapshot {
+        return AppSettingsSnapshot(
+            darkTheme = darkTheme.first(),
+            selectedMonth = selectedMonth.first(),
+            syncEnabled = syncEnabled.first(),
+            syncBaseUrl = syncBaseUrl.first(),
+            biometricEnabled = biometricEnabled.first()
+        )
+    }
+
+    suspend fun restoreSnapshot(snapshot: AppSettingsSnapshot) {
+        context.dataStore.edit { preferences ->
+            if (snapshot.darkTheme == null) {
+                preferences.remove(themeKey)
+            } else {
+                preferences[themeKey] = snapshot.darkTheme
+            }
+            preferences[monthKey] = snapshot.selectedMonth
+            preferences[syncEnabledKey] = snapshot.syncEnabled
+            preferences[syncBaseUrlKey] = snapshot.syncBaseUrl.trim().trimEnd('/')
+            preferences[biometricEnabledKey] = snapshot.biometricEnabled
         }
     }
 }

@@ -23,6 +23,22 @@ class DateUtilsTest {
     }
 
     @Test
+    fun testFirstMonthlyDueOnOrAfter() {
+        assertEquals(
+            "2026-05-15",
+            DateUtils.getFirstMonthlyDueOnOrAfter("2026-05-10", 15, "2026-04-01")
+        )
+        assertEquals(
+            "2026-06-15",
+            DateUtils.getFirstMonthlyDueOnOrAfter("2026-05-20", 15, "2026-04-01")
+        )
+        assertEquals(
+            "2026-02-28",
+            DateUtils.getFirstMonthlyDueOnOrAfter("2026-02-01", 31, "2026-02-01")
+        )
+    }
+
+    @Test
     fun testGetInitialTransactionDate() {
         // Today is 2026-05-06 in the context of previous tools
         // But the function uses LocalDate.now(), which might vary.

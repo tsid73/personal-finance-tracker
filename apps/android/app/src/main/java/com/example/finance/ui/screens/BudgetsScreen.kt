@@ -99,7 +99,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel) {
             targetState = selectedMonth,
             transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
             label = "budgets_month"
-        ) {
+        ) { animatedMonth ->
             LazyColumn(
                 modifier = Modifier.padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -112,7 +112,7 @@ fun BudgetsScreen(viewModel: BudgetsViewModel) {
                 ) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Monthly target", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(DateUtils.formatDisplayMonth(selectedMonth), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(DateUtils.formatDisplayMonth(animatedMonth), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text(MoneyFormatter.format(totalBudget), style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

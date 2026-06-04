@@ -36,8 +36,14 @@ interface BudgetDao {
     @Query("SELECT * FROM monthly_budget_targets WHERE user_id = :userId AND month = :month AND year = :year LIMIT 1")
     fun getMonthlyTarget(userId: Int, month: Int, year: Int): Flow<MonthlyBudgetTargetEntity?>
 
+    @Query("SELECT * FROM monthly_budget_targets WHERE user_id = :userId ORDER BY year DESC, month DESC")
+    suspend fun getAllMonthlyTargets(userId: Int): List<MonthlyBudgetTargetEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMonthlyTarget(target: MonthlyBudgetTargetEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMonthlyTargets(targets: List<MonthlyBudgetTargetEntity>)
 
     @Query("SELECT SUM(allocated_amount) FROM budgets WHERE user_id = :userId AND month = :month AND year = :year")
     suspend fun getTotalAllocated(userId: Int, month: Int, year: Int): Long?
@@ -47,4 +53,10 @@ interface BudgetDao {
 
     @Query("UPDATE budgets SET category_id = :newCategoryId WHERE category_id = :oldCategoryId")
     suspend fun reassignCategory(oldCategoryId: Int, newCategoryId: Int)
+
+    @Query("DELETE FROM budgets")
+    suspend fun deleteAllBudgets()
+
+    @Query("DELETE FROM monthly_budget_targets")
+    suspend fun deleteAllMonthlyTargets()
 }

@@ -107,7 +107,7 @@ fun RecurringScreen(viewModel: RecurringViewModel) {
                 }
             } else {
                 items(recurring, key = { it.id }) { item ->
-                    RecurringItem(
+                    RecurringItemCard(
                         item = item,
                         categoryName = categories.find { it.id == item.categoryId }?.name ?: "Unknown",
                         accountName = accounts.find { it.id == item.accountId }?.name ?: "Unknown",
@@ -175,10 +175,11 @@ fun RecurringScreen(viewModel: RecurringViewModel) {
             }
         )
     }
+
 }
 
 @Composable
-private fun RecurringItem(
+private fun RecurringItemCard(
     item: RecurringTransactionEntity,
     categoryName: String,
     accountName: String,
@@ -192,12 +193,12 @@ private fun RecurringItem(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(item.title, style = MaterialTheme.typography.titleMedium)
                     Text(
-                        "$categoryName • $accountName • day ${item.dayOfMonth}",
+                        "$categoryName - $accountName - day ${item.dayOfMonth}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "Next due ${DateUtils.formatDisplayDate(item.nextDueDate)}${if (item.autoCreate) " • auto-create" else ""}",
+                        "Next due ${DateUtils.formatDisplayDate(item.nextDueDate)}${if (item.autoCreate) " - auto-create" else ""}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

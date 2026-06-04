@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="file" path="."/>
+        <include domain="database" path="finance_db" />
+        <include domain="database" path="finance_db-wal" />
+        <include domain="database" path="finance_db-shm" />
+        <include domain="file" path="datastore/" />
     </cloud-backup>
     <device-transfer>
-        <include domain="file" path="."/>
+        <include domain="database" path="finance_db" />
+        <include domain="database" path="finance_db-wal" />
+        <include domain="database" path="finance_db-shm" />
+        <include domain="file" path="datastore/" />
     </device-transfer>
 </data-extraction-rules>

@@ -29,7 +29,7 @@ class TransactionsViewModel(
     val accounts: StateFlow<List<AccountEntity>> = repository.getAccounts()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val categories: StateFlow<List<CategoryEntity>> = repository.getCategories(false)
+    val categories: StateFlow<List<CategoryEntity>> = repository.getCategories(true)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {

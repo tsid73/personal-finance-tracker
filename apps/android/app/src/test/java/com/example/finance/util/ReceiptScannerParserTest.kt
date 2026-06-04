@@ -50,4 +50,23 @@ class ReceiptScannerParserTest {
         val scanned = ReceiptScanner.internalParseText(text)
         assertEquals(1620L, scanned.amount)
     }
+
+    @Test
+    fun `parseText should handle thousand separators`() {
+        val text1 = """
+            SUPERMARKET
+            Date: 2023-10-24
+            TOTAL: 1,250.50
+        """.trimIndent()
+        val scanned1 = ReceiptScanner.internalParseText(text1)
+        assertEquals(125050L, scanned1.amount)
+
+        val text2 = """
+            SUPERMARKET
+            Date: 2023-10-24
+            TOTAL: 1.250,50
+        """.trimIndent()
+        val scanned2 = ReceiptScanner.internalParseText(text2)
+        assertEquals(125050L, scanned2.amount)
+    }
 }

@@ -29,7 +29,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -181,12 +180,19 @@ fun TransactionsScreen(viewModel: TransactionsViewModel) {
             targetState = selectedMonth,
             transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
             label = "transactions_month"
-        ) {
+        ) { animatedMonth ->
             LazyColumn(
                 modifier = Modifier.padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+            item {
+                Text(
+                    text = DateUtils.formatDisplayMonth(animatedMonth),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
             item {
                 TransactionFilters(
                     searchQuery = searchQuery,
@@ -460,6 +466,9 @@ fun TransactionEditorDialog(
             )
         )
     }
+    val isDateInSelectedMonth = remember(date, selectedMonth) {
+        date.startsWith(selectedMonth)
+    }
     var accountExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     var showDiscardDialog by remember { mutableStateOf(false) }
@@ -536,7 +545,7 @@ fun TransactionEditorDialog(
                                         merchant.trim().ifBlank { null }
                                     )
                                 },
-                                enabled = title.isNotBlank() && amount.toDoubleOrNull()?.let { it > 0 } == true && selectedAccount != null && selectedCategory != null
+                                enabled = title.isNotBlank() && amount.toDoubleOrNull()?.let { it > 0 } == true && selectedAccount != null && selectedCategory != null && isDateInSelectedMonth
                             ) {
                                 Text("Save")
                             }
@@ -570,9 +579,9 @@ fun TransactionEditorDialog(
                     OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Title") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = amount, onValueChange = { if (it.isEmpty() || it.toDoubleOrNull() != null) amount = it }, label = { Text("Amount") }, modifier = Modifier.fillMaxWidth(), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Checkbox(
-                            checked = kind == TransactionKind.EXPENSE,
-                            onCheckedChange = {
+                        androidx.compose.material3.RadioButton(
+                            selected = kind == TransactionKind.EXPENSE,
+                            onClick = {
                                 kind = TransactionKind.EXPENSE
                                 selectedCategory = categories.firstOrNull { category -> category.type == kind && !category.isArchived }
                             },
@@ -580,9 +589,9 @@ fun TransactionEditorDialog(
                         )
                         Text("Expense")
                         Spacer(modifier = Modifier.size(12.dp))
-                        Checkbox(
-                            checked = kind == TransactionKind.INCOME,
-                            onCheckedChange = {
+                        androidx.compose.material3.RadioButton(
+                            selected = kind == TransactionKind.INCOME,
+                            onClick = {
                                 kind = TransactionKind.INCOME
                                 selectedCategory = categories.firstOrNull { category -> category.type == kind && !category.isArchived }
                             },
@@ -604,7 +613,7 @@ fun TransactionEditorDialog(
                     ExposedDropdownMenuBox(expanded = categoryExpanded, onExpandedChange = { categoryExpanded = !categoryExpanded }) {
                         OutlinedTextField(value = selectedCategory?.name ?: "Select category", onValueChange = {}, readOnly = true, label = { Text("Category") }, trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) }, modifier = Modifier.menuAnchor().fillMaxWidth())
                         DropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
-                            categories.filter { it.type == kind && !it.isArchived }.forEach { category ->
+                            categories.filter { it.type == kind && (!it.isArchived || it.id == initialTransaction?.categoryId) }.forEach { category ->
                                 DropdownMenuItem(text = { Text(category.name) }, onClick = {
                                     selectedCategory = category
                                     categoryExpanded = false
@@ -618,6 +627,13 @@ fun TransactionEditorDialog(
                         onValueChange = { date = it },
                         monthKey = selectedMonth
                     )
+                    if (!isDateInSelectedMonth) {
+                        Text(
+                            text = "Transaction date must fall within ${DateUtils.formatDisplayMonth(selectedMonth)}.",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     OutlinedTextField(value = merchant, onValueChange = { merchant = it }, label = { Text("Merchant") }, modifier = Modifier.fillMaxWidth())
                     OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Notes") }, modifier = Modifier.fillMaxWidth())
                 }

@@ -9,7 +9,7 @@ import com.example.finance.data.repository.PreferenceManager
 class FinanceApplication : Application() {
     val database by lazy {
         Room.databaseBuilder(this, AppDatabase::class.java, "finance_db")
-            .fallbackToDestructiveMigration()
+            .addMigrations(AppDatabase.MIGRATION_2_3)
             .build()
     }
     val repository by lazy { FinanceRepository(database) }

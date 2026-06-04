@@ -32,7 +32,7 @@ import com.example.finance.data.entity.UserEntity
         MonthlyBudgetTargetEntity::class,
         ActivityLogEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -48,7 +48,7 @@ abstract class AppDatabase : RoomDatabase() {
     companion object {
         val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
-                // Placeholder for future schema changes
+                database.execSQL("ALTER TABLE activity_logs ADD COLUMN source TEXT NOT NULL DEFAULT 'local'")
             }
         }
     }

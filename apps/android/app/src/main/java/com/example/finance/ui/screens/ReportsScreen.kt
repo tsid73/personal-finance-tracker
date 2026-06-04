@@ -100,21 +100,21 @@ fun ReportsScreen(viewModel: ReportsViewModel) {
             targetState = selectedMonth to scope,
             transitionSpec = { fadeIn(animationSpec = tween(180)) togetherWith fadeOut(animationSpec = tween(120)) },
             label = "reports_state"
-        ) {
+        ) { (animatedMonth, animatedScope) ->
             LazyColumn(
                 modifier = Modifier.padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
             item {
-                Text("For ${DateUtils.formatDisplayMonth(selectedMonth)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("For ${DateUtils.formatDisplayMonth(animatedMonth)}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ScopeButton("Budget vs actual", selected = scope == ReportScope.BUDGET_VS_ACTUAL) {
+                    ScopeButton("Budget vs actual", selected = animatedScope == ReportScope.BUDGET_VS_ACTUAL) {
                         scope = ReportScope.BUDGET_VS_ACTUAL
                     }
-                    ScopeButton("Multi-month comparison", selected = scope == ReportScope.COMPARISON) {
+                    ScopeButton("Multi-month comparison", selected = animatedScope == ReportScope.COMPARISON) {
                         scope = ReportScope.COMPARISON
                     }
                 }
@@ -134,7 +134,7 @@ fun ReportsScreen(viewModel: ReportsViewModel) {
             item {
                 SummaryMetricCard("Top expense category", summary.topCategory)
             }
-            if (scope == ReportScope.BUDGET_VS_ACTUAL) {
+            if (animatedScope == ReportScope.BUDGET_VS_ACTUAL) {
                 if (budgetVsActual.isNotEmpty()) {
                     item {
                         CategoryPieChart(
@@ -156,7 +156,7 @@ fun ReportsScreen(viewModel: ReportsViewModel) {
                 } else {
                     items(budgetVsActual, key = { "${it.categoryId}-${it.categoryName}" }) { row ->
                         BudgetActualCard(row = row, onClick = {
-                            categoryDetailKey = selectedMonth to row.categoryId
+                            categoryDetailKey = animatedMonth to row.categoryId
                         })
                     }
                 }

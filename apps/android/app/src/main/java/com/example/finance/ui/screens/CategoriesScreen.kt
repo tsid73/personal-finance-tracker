@@ -172,7 +172,7 @@ private fun CategoryItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                modifier = Modifier.size(14.dp).background(Color(android.graphics.Color.parseColor(category.color)), CircleShape)
+                modifier = Modifier.size(14.dp).background(parseColor(category.color), CircleShape)
             )
             Spacer(modifier = Modifier.size(16.dp))
             Column(modifier = Modifier.weight(1f)) {
@@ -303,4 +303,12 @@ private fun DeleteCategoryDialog(
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
+}
+
+private fun parseColor(value: String): Color {
+    return try {
+        Color(android.graphics.Color.parseColor(value))
+    } catch (e: Exception) {
+        Color.Gray
+    }
 }

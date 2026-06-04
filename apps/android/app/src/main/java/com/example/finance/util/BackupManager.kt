@@ -2,8 +2,10 @@ package com.example.finance.util
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import androidx.core.content.FileProvider
 import com.example.finance.data.repository.BackupSnapshot
+import com.example.finance.data.repository.LocalBackupDocument
 import com.google.gson.GsonBuilder
 import java.io.File
 
@@ -40,6 +42,19 @@ object BackupManager {
         val file = File(context.cacheDir, "finance_backup_${System.currentTimeMillis()}.json")
         file.writeText(gson.toJson(snapshot))
         return file
+    }
+
+    fun writeBackupDocument(context: Context, uri: Uri, document: LocalBackupDocument) {
+        context.contentResolver.openOutputStream(uri, "wt")?.bufferedWriter()?.use { writer ->
+            writer.write(gson.toJson(document))
+        } ?: error("Unable to open backup destination.")
+    }
+
+    fun readBackupDocument(context: Context, uri: Uri): LocalBackupDocument {
+        val json = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+            ?: error("Unable to read backup file.")
+        return gson.fromJson(json, LocalBackupDocument::class.java)
+            ?: error("Backup file is empty or invalid.")
     }
 
     fun createShareIntent(context: Context, file: File, mimeType: String, title: String): Intent {

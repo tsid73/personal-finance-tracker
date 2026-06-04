@@ -12,6 +12,7 @@ import com.example.finance.data.entity.UserEntity
 import com.example.finance.domain.model.AccountType
 import com.example.finance.domain.model.BudgetMode
 import com.example.finance.domain.model.TransactionKind
+import androidx.room.withTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -36,45 +37,38 @@ class FinanceRepository(private val db: AppDatabase) {
     private val demoUserId = 1
 
     suspend fun ensureDemoUserAndSeeds() {
-        if (db.userDao().getUserCount() == 0) {
-            db.userDao().insertUser(UserEntity(id = demoUserId, fullName = "Demo User", email = "demo@example.com"))
+        if (db.userDao().getUserCount() > 0) {
+            return
         }
+        db.userDao().insertUser(UserEntity(id = demoUserId, fullName = "Demo User", email = "demo@example.com"))
 
-        // Seed accounts
-        val currentAccounts = db.accountDao().getAccounts(demoUserId).firstOrNull() ?: emptyList()
-        if (currentAccounts.isEmpty()) {
-            db.accountDao().insertAccounts(listOf(
-                AccountEntity(id = 1, userId = demoUserId, name = "Bank", type = AccountType.BANK, balance = 4285000),
-                AccountEntity(id = 2, userId = demoUserId, name = "Cash", type = AccountType.CASH, balance = 240000),
-                AccountEntity(id = 3, userId = demoUserId, name = "Credit Card", type = AccountType.CREDIT, balance = -380000),
-                AccountEntity(id = 4, userId = demoUserId, name = "UPI", type = AccountType.BANK, balance = 0),
-                AccountEntity(id = 5, userId = demoUserId, name = "UPI-Lite", type = AccountType.BANK, balance = 0),
-                AccountEntity(id = 6, userId = demoUserId, name = "NEFT", type = AccountType.BANK, balance = 0)
-            ))
-        }
+        db.accountDao().insertAccounts(listOf(
+            AccountEntity(id = 1, userId = demoUserId, name = "Bank", type = AccountType.BANK, balance = 4285000),
+            AccountEntity(id = 2, userId = demoUserId, name = "Cash", type = AccountType.CASH, balance = 240000),
+            AccountEntity(id = 3, userId = demoUserId, name = "Credit Card", type = AccountType.CREDIT, balance = -380000),
+            AccountEntity(id = 4, userId = demoUserId, name = "UPI", type = AccountType.BANK, balance = 0),
+            AccountEntity(id = 5, userId = demoUserId, name = "UPI-Lite", type = AccountType.BANK, balance = 0),
+            AccountEntity(id = 6, userId = demoUserId, name = "NEFT", type = AccountType.BANK, balance = 0)
+        ))
 
-        // Seed categories
-        val currentCategories = db.categoryDao().getCategories(demoUserId, true).firstOrNull() ?: emptyList()
-        if (currentCategories.size < 10) { // Basic check for defaults
-            db.categoryDao().insertCategories(listOf(
-                CategoryEntity(id = 1, userId = null, name = "Groceries", type = TransactionKind.EXPENSE, color = "#0f766e", icon = "shopping-bag", isDefault = true),
-                CategoryEntity(id = 2, userId = null, name = "Rent", type = TransactionKind.EXPENSE, color = "#b45309", icon = "home", isDefault = true),
-                CategoryEntity(id = 3, userId = null, name = "Utilities", type = TransactionKind.EXPENSE, color = "#2563eb", icon = "bolt", isDefault = true),
-                CategoryEntity(id = 4, userId = null, name = "Transport", type = TransactionKind.EXPENSE, color = "#7c3aed", icon = "car", isDefault = true),
-                CategoryEntity(id = 5, userId = null, name = "Dining", type = TransactionKind.EXPENSE, color = "#dc2626", icon = "utensils", isDefault = true),
-                CategoryEntity(id = 6, userId = null, name = "Healthcare", type = TransactionKind.EXPENSE, color = "#db2777", icon = "heart-pulse", isDefault = true),
-                CategoryEntity(id = 7, userId = null, name = "Entertainment", type = TransactionKind.EXPENSE, color = "#0891b2", icon = "film", isDefault = true),
-                CategoryEntity(id = 8, userId = null, name = "Shopping", type = TransactionKind.EXPENSE, color = "#ea580c", icon = "shirt", isDefault = true),
-                CategoryEntity(id = 9, userId = null, name = "Salary", type = TransactionKind.INCOME, color = "#15803d", icon = "briefcase", isDefault = true),
-                CategoryEntity(id = 10, userId = null, name = "Freelance", type = TransactionKind.INCOME, color = "#4338ca", icon = "laptop", isDefault = true),
-                CategoryEntity(id = 11, userId = demoUserId, name = "Credit Card", type = TransactionKind.EXPENSE, color = "#475569", icon = "credit-card"),
-                CategoryEntity(id = 12, userId = demoUserId, name = "EMI", type = TransactionKind.EXPENSE, color = "#7c2d12", icon = "bank"),
-                CategoryEntity(id = 13, userId = demoUserId, name = "Food", type = TransactionKind.EXPENSE, color = "#991b1b", icon = "utensils"),
-                CategoryEntity(id = 14, userId = demoUserId, name = "Investment", type = TransactionKind.EXPENSE, color = "#065f46", icon = "trending-up"),
-                CategoryEntity(id = 15, userId = demoUserId, name = "Misc", type = TransactionKind.EXPENSE, color = "#52525b", icon = "layers"),
-                CategoryEntity(id = 16, userId = demoUserId, name = "Hotel", type = TransactionKind.EXPENSE, color = "#7c2d12", icon = "bed")
-            ))
-        }
+        db.categoryDao().insertCategories(listOf(
+            CategoryEntity(id = 1, userId = null, name = "Groceries", type = TransactionKind.EXPENSE, color = "#0f766e", icon = "shopping-bag", isDefault = true),
+            CategoryEntity(id = 2, userId = null, name = "Rent", type = TransactionKind.EXPENSE, color = "#b45309", icon = "home", isDefault = true),
+            CategoryEntity(id = 3, userId = null, name = "Utilities", type = TransactionKind.EXPENSE, color = "#2563eb", icon = "bolt", isDefault = true),
+            CategoryEntity(id = 4, userId = null, name = "Transport", type = TransactionKind.EXPENSE, color = "#7c3aed", icon = "car", isDefault = true),
+            CategoryEntity(id = 5, userId = null, name = "Dining", type = TransactionKind.EXPENSE, color = "#dc2626", icon = "utensils", isDefault = true),
+            CategoryEntity(id = 6, userId = null, name = "Healthcare", type = TransactionKind.EXPENSE, color = "#db2777", icon = "heart-pulse", isDefault = true),
+            CategoryEntity(id = 7, userId = null, name = "Entertainment", type = TransactionKind.EXPENSE, color = "#0891b2", icon = "film", isDefault = true),
+            CategoryEntity(id = 8, userId = null, name = "Shopping", type = TransactionKind.EXPENSE, color = "#ea580c", icon = "shirt", isDefault = true),
+            CategoryEntity(id = 9, userId = null, name = "Salary", type = TransactionKind.INCOME, color = "#15803d", icon = "briefcase", isDefault = true),
+            CategoryEntity(id = 10, userId = null, name = "Freelance", type = TransactionKind.INCOME, color = "#4338ca", icon = "laptop", isDefault = true),
+            CategoryEntity(id = 11, userId = demoUserId, name = "Credit Card", type = TransactionKind.EXPENSE, color = "#475569", icon = "credit-card"),
+            CategoryEntity(id = 12, userId = demoUserId, name = "EMI", type = TransactionKind.EXPENSE, color = "#7c2d12", icon = "bank"),
+            CategoryEntity(id = 13, userId = demoUserId, name = "Food", type = TransactionKind.EXPENSE, color = "#991b1b", icon = "utensils"),
+            CategoryEntity(id = 14, userId = demoUserId, name = "Investment", type = TransactionKind.EXPENSE, color = "#065f46", icon = "trending-up"),
+            CategoryEntity(id = 15, userId = demoUserId, name = "Misc", type = TransactionKind.EXPENSE, color = "#52525b", icon = "layers"),
+            CategoryEntity(id = 16, userId = demoUserId, name = "Hotel", type = TransactionKind.EXPENSE, color = "#7c2d12", icon = "bed")
+        ))
 
         // Seed historical transactions (007 & 008)
         db.transactionDao().insertTransactions(listOf(
@@ -232,12 +226,23 @@ class FinanceRepository(private val db: AppDatabase) {
         db.recurringDao().deleteRecurring(recurring)
         logActivity("recurring_transaction", recurring.id, "delete", "Deleted recurring schedule ${recurring.title}")
     }
+    suspend fun getRecurringById(id: Int) = db.recurringDao().getRecurringById(id)
 
     // Activity
     fun getRecentActivity() = db.activityDao().getRecentActivity(demoUserId)
 
     private suspend fun logActivity(type: String, id: Int, action: String, title: String, note: String? = null) {
-        db.activityDao().insertLog(ActivityLogEntity(userId = demoUserId, entityType = type, entityId = id, action = action, title = title, note = note))
+        db.activityDao().insertLog(
+            ActivityLogEntity(
+                userId = demoUserId,
+                entityType = type,
+                entityId = id,
+                action = action,
+                title = title,
+                note = note,
+                source = "local"
+            )
+        )
     }
 
     suspend fun getMonthlyTotal(month: String, kind: TransactionKind): Long = db.transactionDao().getMonthlyTotal(demoUserId, month, kind) ?: 0L
@@ -249,12 +254,86 @@ class FinanceRepository(private val db: AppDatabase) {
             transactions = db.transactionDao().getAllTransactions(demoUserId).firstOrNull() ?: emptyList(),
             recurring = db.recurringDao().getRecurringTransactions(demoUserId).firstOrNull() ?: emptyList(),
             budgets = db.budgetDao().getAllBudgets(demoUserId).firstOrNull() ?: emptyList(),
-            monthlyTargets = buildList {
-                val budgets = db.budgetDao().getAllBudgets(demoUserId).firstOrNull() ?: emptyList()
-                budgets.map { it.year to it.month }.distinct().forEach { (year, month) ->
-                    db.budgetDao().getMonthlyTarget(demoUserId, month, year).firstOrNull()?.let(::add)
-                }
-            }
+            monthlyTargets = getAllMonthlyTargets()
         )
+    }
+
+    suspend fun getLocalBackupDocument(appSettings: AppSettingsSnapshot): LocalBackupDocument {
+        val users = listOfNotNull(db.userDao().getUserById(demoUserId))
+        return LocalBackupDocument(
+            formatVersion = BackupValidator.currentFormatVersion,
+            exportedAt = System.currentTimeMillis(),
+            appSettings = appSettings,
+            users = users,
+            accounts = db.accountDao().getAccounts(demoUserId).firstOrNull() ?: emptyList(),
+            categories = db.categoryDao().getCategories(demoUserId, true).firstOrNull() ?: emptyList(),
+            transactions = db.transactionDao().getAllTransactions(demoUserId).firstOrNull() ?: emptyList(),
+            recurring = db.recurringDao().getRecurringTransactions(demoUserId).firstOrNull() ?: emptyList(),
+            budgets = db.budgetDao().getAllBudgets(demoUserId).firstOrNull() ?: emptyList(),
+            monthlyTargets = getAllMonthlyTargets(),
+            activityLogs = db.activityDao().getAllActivity(demoUserId)
+        )
+    }
+
+    suspend fun restoreLocalBackup(document: LocalBackupDocument): RestoreValidationResult {
+        val validation = BackupValidator.validate(document)
+
+        db.withTransaction {
+            db.activityDao().deleteAll()
+            db.transactionDao().deleteAll()
+            db.recurringDao().deleteAll()
+            db.budgetDao().deleteAllBudgets()
+            db.budgetDao().deleteAllMonthlyTargets()
+            db.categoryDao().deleteAll()
+            db.accountDao().deleteAll()
+            db.userDao().deleteAll()
+
+            db.userDao().insertUsers(document.users)
+            db.accountDao().insertAccounts(document.accounts)
+            db.categoryDao().insertCategories(document.categories)
+            db.recurringDao().insertRecurringList(document.recurring)
+            db.transactionDao().insertTransactions(document.transactions)
+            db.budgetDao().insertBudgets(document.budgets)
+            db.budgetDao().insertMonthlyTargets(document.monthlyTargets)
+            db.activityDao().insertLogs(
+                document.activityLogs + ActivityLogEntity(
+                    userId = demoUserId,
+                    entityType = "backup",
+                    entityId = null,
+                    action = "restore",
+                    title = "Restored app data from backup",
+                    source = "backup"
+                )
+            )
+        }
+
+        return validation
+    }
+
+    suspend fun calculateBudgetBreakdown(monthKey: String): Triple<Long, Long, Long> {
+        val parts = monthKey.split("-").map { it.toInt() }
+        val month = parts[1]
+        val year = parts[0]
+        val budgets = db.budgetDao().getBudgetsByMonth(demoUserId, month, year).firstOrNull() ?: emptyList()
+        val categories = db.categoryDao().getCategories(demoUserId, true).firstOrNull() ?: emptyList()
+        val budgetCategoryIds = budgets.map { it.categoryId }.toSet()
+        val transactions = db.transactionDao().getTransactionsByMonth(demoUserId, monthKey).firstOrNull() ?: emptyList()
+
+        val spent = transactions
+            .filter { it.kind == TransactionKind.EXPENSE && it.categoryId in budgetCategoryIds }
+            .sumOf { it.amount }
+
+        val fixed = budgets.sumOf { budget ->
+            if (categories.find { it.id == budget.categoryId }?.budgetMode == BudgetMode.FIXED) budget.allocatedAmount else 0L
+        }
+        val flexible = budgets.sumOf { budget ->
+            if (categories.find { it.id == budget.categoryId }?.budgetMode == BudgetMode.FLEXIBLE) budget.allocatedAmount else 0L
+        }
+
+        return Triple(spent, fixed, flexible)
+    }
+
+    private suspend fun getAllMonthlyTargets(): List<MonthlyBudgetTargetEntity> {
+        return db.budgetDao().getAllMonthlyTargets(demoUserId)
     }
 }

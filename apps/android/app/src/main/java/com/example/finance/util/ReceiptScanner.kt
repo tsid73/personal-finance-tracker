@@ -52,14 +52,29 @@ object ReceiptScanner {
         
         // Refine: find line with "total" and look for an amount in that line or the next line
         val totalLineIndex = lines.indexOfFirst { line ->
-            totalKeywords.any { kw -> line.contains(kw, ignoreCase = true) }
+            totalKeywords.any { kw ->
+                if (kw.equals("TOTAL", ignoreCase = true)) {
+                    val pattern = Pattern.compile("(?<!sub)(?<!sub-)\\btotal\\b", Pattern.CASE_INSENSITIVE)
+                    pattern.matcher(line).find()
+                } else {
+                    val pattern = Pattern.compile("\\b${Pattern.quote(kw)}\\b", Pattern.CASE_INSENSITIVE)
+                    pattern.matcher(line).find()
+                }
+            }
         }
         
         if (totalLineIndex != -1) {
-            val searchLines = lines.subList(totalLineIndex, minOf(totalLineIndex + 3, lines.size))
-            val lineAmounts = searchLines.flatMap { extractAllAmounts(it) }
-            if (lineAmounts.isNotEmpty()) {
-                bestAmount = lineAmounts.maxOrNull()
+            val totalLine = lines[totalLineIndex]
+            val totalLineAmounts = extractAllAmounts(totalLine)
+            if (totalLineAmounts.isNotEmpty()) {
+                bestAmount = totalLineAmounts.last()
+            } else if (totalLineIndex + 1 < lines.size) {
+                // Search the next 2 lines
+                val searchLines = lines.subList(totalLineIndex + 1, minOf(totalLineIndex + 3, lines.size))
+                val lineAmounts = searchLines.flatMap { extractAllAmounts(it) }
+                if (lineAmounts.isNotEmpty()) {
+                    bestAmount = lineAmounts.maxOrNull()
+                }
             }
         }
 
@@ -88,14 +103,25 @@ object ReceiptScanner {
 
     private fun extractAllAmounts(input: String): List<Long> {
         val amounts = mutableListOf<Long>()
-        val matcher = Pattern.compile("(\\d+[.,]\\d{2})").matcher(input)
+        val matcher = Pattern.compile("(?<!\\d)\\d+(?:[.,]\\d+)*(?:[.,]\\d{2})\\b").matcher(input)
         while (matcher.find()) {
-            val clean = matcher.group(1)?.replace(",", ".") ?: continue
+            val raw = matcher.group(0) ?: continue
+            val clean = cleanAmountString(raw)
             clean.toDoubleOrNull()?.let {
-                amounts.add((it * 100).toLong())
+                amounts.add(kotlin.math.round(it * 100).toLong())
             }
         }
         return amounts
+    }
+
+    private fun cleanAmountString(raw: String): String {
+        val lastDot = raw.lastIndexOf('.')
+        val lastComma = raw.lastIndexOf(',')
+        return when {
+            lastDot > lastComma -> raw.replace(",", "")
+            lastComma > lastDot -> raw.replace(".", "").replace(",", ".")
+            else -> raw
+        }
     }
 
     private fun tryParseDate(a: Int, b: Int, c: Int): LocalDate? {

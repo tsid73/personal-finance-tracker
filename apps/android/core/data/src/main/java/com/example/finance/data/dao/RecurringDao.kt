@@ -14,11 +14,14 @@ interface RecurringDao {
     @Query("SELECT * FROM recurring_transactions WHERE user_id = :userId ORDER BY is_active DESC, next_due_date ASC")
     fun getRecurringTransactions(userId: Int): Flow<List<RecurringTransactionEntity>>
 
-    @Query("SELECT * FROM recurring_transactions WHERE user_id = :userId AND is_active = 1 AND auto_create = 1 AND next_due_date <= :today")
+    @Query("SELECT * FROM recurring_transactions WHERE user_id = :userId AND is_active = 1 AND next_due_date <= :today")
     suspend fun getDueRecurringTransactions(userId: Int, today: String): List<RecurringTransactionEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRecurring(recurring: RecurringTransactionEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRecurringList(recurring: List<RecurringTransactionEntity>)
 
     @Update
     suspend fun updateRecurring(recurring: RecurringTransactionEntity)
@@ -34,4 +37,7 @@ interface RecurringDao {
 
     @Query("UPDATE recurring_transactions SET category_id = :newCategoryId WHERE category_id = :oldCategoryId")
     suspend fun reassignCategory(oldCategoryId: Int, newCategoryId: Int)
+
+    @Query("DELETE FROM recurring_transactions")
+    suspend fun deleteAll()
 }

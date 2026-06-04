@@ -64,4 +64,7 @@ interface TransactionDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM transactions WHERE user_id = :userId AND recurring_transaction_id = :recurringId AND transaction_date = :date LIMIT 1)")
     suspend fun existsRecurringTransaction(userId: Int, recurringId: Int, date: String): Boolean
+
+    @Query("DELETE FROM transactions")
+    suspend fun deleteAll()
 }
