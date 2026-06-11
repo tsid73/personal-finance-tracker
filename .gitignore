@@ -36,4 +36,3 @@ apps/android/*.keystore
 apps/android/app/release/
 *.apk
 *.aab
-!releases/android/*.apk
